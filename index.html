@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Genshin Character Lounge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:wght@500;600;700&family=Pretendard:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <div class="ambient-blur ambient-blur-left" aria-hidden="true"></div>
+    <div class="ambient-blur ambient-blur-right" aria-hidden="true"></div>
+
+    <section class="top-banner" id="topBanner">
+      <header class="topbar" id="globalTopbar">
+        <div class="brand">
+          <span class="brand-dot"></span>
+          <strong>Character Lounge</strong>
+        </div>
+        <nav class="top-links" aria-label="사이트 메뉴">
+          <a href="#hero">소개</a>
+          <div class="top-nav-item top-nav-item--characters" id="charactersNavItem">
+            <button
+              class="top-link-btn"
+              id="characterMenuTrigger"
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-controls="characterMenuPanel"
+            >
+              Characters
+            </button>
+            <div class="character-menu-panel glass-panel" id="characterMenuPanel" role="menu">
+              <div
+                class="character-menu-list"
+                id="characterMenuList"
+                role="group"
+                aria-label="캐릭터 선택"
+              ></div>
+            </div>
+          </div>
+          <a href="#immersiveDetails">하이라이트</a>
+          <a href="#gallery">프로필</a>
+        </nav>
+      </header>
+    </section>
+
+    <section class="immersive-layer" id="immersiveLayer" aria-hidden="false">
+      <div class="immersive-scroll" id="immersiveScroll">
+        <section class="immersive-stage" id="immersiveStage">
+          <div class="immersive-pin" id="immersivePin">
+            <div class="immersive-scene" id="immersiveScene">
+              <canvas class="immersive-particles" id="immersiveParticles" aria-hidden="true"></canvas>
+              <img class="immersive-backdrop" id="immersiveBackdrop" src="" alt="" />
+              <canvas
+                class="immersive-transition-overlay"
+                id="immersiveTransitionCanvas"
+                aria-hidden="true"
+              ></canvas>
+              <div class="immersive-shade" aria-hidden="true"></div>
+              <div class="immersive-caustics" id="immersiveCaustics" aria-hidden="true"></div>
+              <div class="immersive-beams" id="immersiveBeams" aria-hidden="true">
+                <i class="beam beam-a"></i>
+                <i class="beam beam-b"></i>
+                <i class="beam beam-c"></i>
+              </div>
+              <div class="immersive-fx" id="immersiveFx" aria-hidden="true"></div>
+              <div class="immersive-decor" id="immersiveDecor" aria-hidden="true"></div>
+              <div class="immersive-keywords" id="immersiveKeywords" aria-hidden="true"></div>
+
+              <p class="immersive-theme-tag" id="immersiveThemeTag">Hydro · Fontaine</p>
+              <h2 class="immersive-word" id="immersiveWord">FURINA</h2>
+              <p class="immersive-motto" id="immersiveMotto">Court of Fontaine • The Stage Never Sleeps</p>
+              <p class="immersive-signature" id="immersiveSignature">Salon Solitaire</p>
+
+              <div class="immersive-character-wrap" id="immersiveCharacterWrap">
+                <img class="immersive-image" id="immersiveImage" src="" alt="" />
+              </div>
+
+              <article class="immersive-intro glass-panel" id="immersiveIntroCard">
+                <h3 id="immersiveIntroTitle">About Her :</h3>
+                <p id="immersiveIntroBody"></p>
+              </article>
+              <div
+                class="immersive-character-quicknav"
+                id="characterQuickDots"
+                role="tablist"
+                aria-label="캐릭터 빠른 전환"
+              ></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="immersive-details" id="immersiveDetails">
+          <div class="immersive-details-inner">
+            <p class="immersive-kicker" id="immersiveDetailKicker">Character Dossier</p>
+            <h3 id="immersiveDetailHeading">Furina — Stage Profile</h3>
+            <p id="immersiveLoreText"></p>
+            <div class="immersive-stats-grid" id="immersiveStatsGrid"></div>
+            <h4>Gallery Cuts</h4>
+            <div class="immersive-gallery-grid" id="immersiveGalleryGrid"></div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <div class="page-shell">
+      <main>
+        <section class="hero" id="hero">
+          <div class="hero-copy">
+            <p class="eyebrow" id="heroElement">Hydro · Fontaine</p>
+            <h1 id="heroName">Furina</h1>
+            <p class="hero-title" id="heroTitle">Hydro Archon, Stage of Elegance</p>
+            <p class="hero-description" id="heroDescription"></p>
+
+            <div class="button-row">
+              <button type="button" class="btn btn-primary">캐릭터 상세 보기</button>
+              <button type="button" class="btn btn-ghost">테마 프리셋 저장</button>
+            </div>
+
+            <ul class="stat-list glass-panel" id="heroStats"></ul>
+          </div>
+
+          <div class="hero-art-wrap">
+            <div class="hero-image-frame">
+              <div class="hero-backdrop glass-panel"></div>
+              <img id="heroImage" class="hero-art" src="" alt="" />
+            </div>
+          </div>
+        </section>
+
+        <section class="card-grid" id="gallery">
+          <article class="glass-panel profile-card">
+            <h3 id="profileHeading">Furina Profile</h3>
+            <p id="profileText"></p>
+            <div class="profile-pills" id="profilePills"></div>
+          </article>
+
+          <article class="glass-panel snapshot-card" id="snapshotCard">
+            <p class="snapshot-kicker" id="snapshotKicker">Combat Snapshot</p>
+            <h3 id="snapshotHeading">Team Utility Focus</h3>
+            <p class="snapshot-summary" id="snapshotSummary"></p>
+            <div class="snapshot-points" id="snapshotPoints"></div>
+            <div class="snapshot-tags" id="snapshotTags"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <section class="snapshot-terminal-dock" id="snapshotTerminalDock" aria-label="CMD ASCII Terminal">
+      <div class="terminal-bridge" id="terminalBridge" aria-hidden="true">
+        <div class="terminal-bridge-particles" id="terminalBridgeParticles"></div>
+        <p class="terminal-bridge-caption" id="terminalBridgeCaption">Transitioning to Deep Scan Terminal</p>
+        <div class="terminal-bridge-stream" id="terminalBridgeStream"></div>
+      </div>
+
+      <div class="terminal-stage" id="terminalStage">
+        <div class="terminal-panel-wrap" id="terminalPanelWrap">
+          <div class="terminal-main-grid">
+            <div class="terminal-ascii-viewport" id="terminalAsciiViewport">
+              <div class="terminal-ascii-stack" id="terminalAsciiStack">
+                <pre class="terminal-ascii-layer is-active" id="terminalAsciiPrimary" aria-live="off"></pre>
+                <pre class="terminal-ascii-layer" id="terminalAsciiSecondary" aria-live="off"></pre>
+              </div>
+            </div>
+          </div>
+
+          <footer class="terminal-footer terminal-footer--floating">
+            <div class="terminal-prompt">
+              <span class="terminal-prompt-label" id="terminalPromptLabel">operator@fontaine:~$</span>
+              <span class="terminal-cursor" aria-hidden="true"></span>
+            </div>
+            <p class="terminal-meta" id="terminalMetaLine">Asset: FURINA_LINEART.ASC · Status: Idle</p>
+          </footer>
+        </div>
+      </div>
+    </section>
+
+    <script src="./scripts/app.js" type="module"></script>
+  </body>
+</html>
