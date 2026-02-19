@@ -2,6 +2,132 @@ import { characters, DEFAULT_CHARACTER_ID } from "./character-data.js";
 import { WebGLTransitionEngine } from "./webgl-transition.js";
 import { TerminalAsciiExperience } from "./terminal-ascii-experience.js";
 
+// --- 1. Cinematic Gateway & Roster Lobby Logic ---
+const cinematicGate = document.getElementById("cinematicGate");
+const btnEnterArchive = document.getElementById("btnEnterArchive");
+const cinematicFlash = document.getElementById("cinematicFlash");
+const rosterLobby = document.getElementById("rosterLobby");
+const rosterGrid = document.getElementById("rosterGrid");
+const heroSection = document.getElementById("hero");
+const globalTopbar = document.getElementById("globalTopbar");
+
+if (globalTopbar) {
+  globalTopbar.style.opacity = '0';
+  globalTopbar.style.visibility = 'hidden';
+  globalTopbar.style.pointerEvents = 'none';
+}
+
+function initCinematicGate() {
+  if (!cinematicGate || !btnEnterArchive) return;
+  
+  btnEnterArchive.addEventListener("click", () => {
+    // 1. Play flash effect
+    cinematicFlash.classList.add("is-flashing");
+    
+    // 2. Hide Gate, Show Lobby after slight delay
+    setTimeout(() => {
+      cinematicGate.classList.add("is-closed");
+      rosterLobby.setAttribute("aria-hidden", "false");
+      rosterLobby.classList.add("is-active");
+      
+      // Animate cards staggered
+      const cards = rosterGrid.querySelectorAll('.roster-card');
+      cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px) rotateX(10deg)';
+        setTimeout(() => {
+          card.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0) rotateX(0)';
+          
+          // Clear transition after intro so hover works properly
+          setTimeout(() => {
+            card.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease';
+          }, 800);
+        }, 300 + (index * 150)); // Stagger
+      });
+      
+    }, 400); // Wait for flash peak
+    
+    // 3. Remove flash
+    setTimeout(() => {
+      cinematicFlash.classList.remove("is-flashing");
+    }, 800);
+  });
+}
+
+function renderRosterLobby() {
+  if (!rosterGrid) return;
+  rosterGrid.innerHTML = '';
+  
+  characterIds.forEach(id => {
+    const char = characters[id];
+    if (!char) return;
+    
+    const card = document.createElement("article");
+    card.className = "roster-card";
+    
+    // 3D Tilt effect on mousemove
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      
+      const rotateX = ((y - centerY) / centerY) * -10; // Max 10 deg
+      const rotateY = ((x - centerX) / centerX) * 10;
+      
+      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+    });
+    
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = '';
+    });
+    
+    card.innerHTML = `
+      <div class="roster-card-bg" style="background-image: url('${char.heroImage}')"></div>
+      <div class="roster-card-content">
+        <h3>${char.displayName}</h3>
+        <p>${char.element}</p>
+      </div>
+    `;
+    
+    card.addEventListener("click", () => {
+      // Transition to main view
+      cinematicFlash.classList.add("is-flashing");
+      
+      setTimeout(() => {
+        rosterLobby.classList.remove("is-active");
+        rosterLobby.setAttribute("aria-hidden", "true");
+        setTimeout(() => rosterLobby.style.display = 'none', 1000);
+        
+        // Show Topbar
+        if (globalTopbar) {
+          globalTopbar.style.opacity = '1';
+          globalTopbar.style.visibility = 'visible';
+          globalTopbar.style.pointerEvents = 'auto';
+        }
+        
+        // Show Hero
+        if (heroSection) heroSection.style.display = 'grid'; // it was grid originally
+        
+        // Apply Character
+        applyCharacterThemeImmediate(id, { animate: true });
+        
+      }, 400);
+      
+      setTimeout(() => {
+        cinematicFlash.classList.remove("is-flashing");
+      }, 800);
+    });
+    
+    rosterGrid.appendChild(card);
+  });
+}
+
+// -------------------------------------
+
 const root = document.documentElement;
 
 const heroImage = document.getElementById("heroImage");
@@ -340,26 +466,25 @@ async function resetScenePreview(animated = true) {
   await animateSwipeState(0, 0, 220, easeOutCubic);
 }
 
-async function playSceneSwipeTransition(direction, onCommit) {
+function playSceneSwipeTransition(direction, onCommit) {
   if (prefersReducedMotion) {
     onCommit?.();
-    await Promise.resolve();
-    return;
+    return Promise.resolve();
   }
 
   const outShift = getDirectionalOffset(direction, clamp(window.innerWidth * 0.24, 140, 300));
-  const outDuration = 240;
-  const commitAtMs = 64;
+  const outDuration = 600; // Increased for smoothness
+  const commitAtMs = 300; // Delay commit for smoother visual flow
   const startAt = performance.now();
   let committed = false;
 
-  await new Promise((resolve) => {
+  return new Promise((resolve) => {
     const tick = (now) => {
       const elapsed = now - startAt;
       const t = clamp(elapsed / outDuration, 0, 1);
       const eased = easeInOutCubic(t);
       swipeState.previewX = outShift * eased;
-      swipeState.progress = clamp(eased * 0.72, 0, 1);
+      swipeState.progress = clamp(eased * 0.9, 0, 1); // Increased max progress for deeper blur
       setSwipeBlurIntensity(swipeState.progress);
       updateStageTransform();
 
@@ -375,12 +500,7 @@ async function playSceneSwipeTransition(direction, onCommit) {
       resolve();
     };
     window.requestAnimationFrame(tick);
-  });
-
-  if (!committed) {
-    onCommit?.();
-  }
-  await animateSwipeState(0, 0, 300, easeInOutCubic);
+  }).then(() => animateSwipeState(0, 0, 600, easeInOutCubic)); // Slower return
 }
 
 function applyTypographyTokens(character) {
@@ -1385,21 +1505,29 @@ function renderCharacter(character, options = {}) {
   const useMotion = hasExistingHero && shouldAnimate && !prefersReducedMotion;
   const outDuration = sceneBlend ? 200 : 210;
   const swapDelay = sceneBlend ? 24 : 200;
-  const inDuration = sceneBlend ? 360 : 420;
+  const inDuration = sceneBlend ? 800 : 1000; // Even slower fade in
+
+  // ---- Particle Fade Transition logic ----
+  if (useMotion && sceneBlend && particleCanvas) {
+    // Fade out old particles
+    particleCanvas.style.transition = `opacity ${outDuration}ms ease`;
+    particleCanvas.style.opacity = '0';
+  }
 
   if (useMotion) {
     heroImage.getAnimations().forEach((animation) => animation.cancel());
     heroImage.animate(
       [
-        { opacity: 1, transform: "translate3d(0, 0, 0) scale(1)" },
+        { opacity: 1, transform: "translate3d(0, 0, 0) scale(1)", filter: "blur(0px)" },
         {
-          opacity: 0.08,
-          transform: `translate3d(${travelX}px, 0, 0) scale(0.98)`,
+          opacity: 0,
+          transform: `translate3d(${travelX * 1.5}px, 0, 0) scale(0.95)`,
+          filter: "blur(10px)",
         },
       ],
       {
         duration: outDuration,
-        easing: sceneBlend ? "cubic-bezier(0.32, 0.02, 0.21, 1)" : "cubic-bezier(0.45, 0, 0.2, 1)",
+        easing: "cubic-bezier(0.5, 0, 0.2, 1)", // Smoother fade out
         fill: "forwards",
       }
     );
@@ -1417,17 +1545,27 @@ function renderCharacter(character, options = {}) {
         [
           {
             opacity: 0,
-            transform: `translate3d(${-travelX * 0.68}px, 0, 0) scale(1.02)`,
+            transform: `translate3d(${-travelX * 1.2}px, 0, 0) scale(1.05)`,
+            filter: "blur(10px)",
           },
-          { opacity: 1, transform: "translate3d(0, 0, 0) scale(1)" },
+          { opacity: 1, transform: "translate3d(0, 0, 0) scale(1)", filter: "blur(0px)" },
         ],
         {
           duration: inDuration,
-          easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+          easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", // Softer landing
           fill: "forwards",
         }
       );
     }
+    
+    // Fade in new particles
+    if (useMotion && sceneBlend && particleCanvas) {
+      setTimeout(() => {
+        particleCanvas.style.transition = `opacity ${inDuration}ms ease`;
+        particleCanvas.style.opacity = '1';
+      }, 50);
+    }
+    
   }, useMotion ? swapDelay : 0);
 
   heroElement.textContent = character.element;
@@ -1453,20 +1591,43 @@ function renderImmersiveCharacter(character, options = {}) {
   const useMotion = hasExistingImmersive && shouldAnimate && !prefersReducedMotion;
   const outDuration = sceneBlend ? 190 : 240;
   const swapDelay = sceneBlend ? 24 : 200;
-  const inDuration = sceneBlend ? 360 : 460;
+  const inDuration = sceneBlend ? 800 : 1000;
 
   currentScrollFx = character.scrollFx ?? { beamOpacity: 0.62, causticOpacity: 0.34, beamSpread: 1 };
-  immersiveThemeTag.textContent = character.immersiveKicker;
-  immersiveWord.textContent = character.immersiveWord;
-  immersiveWord.setAttribute("data-text", character.immersiveWord);
-  immersiveMotto.textContent = character.typography?.motto ?? "Court of Fontaine • The Stage Never Sleeps";
-  immersiveSignature.textContent = character.typography?.signature ?? "Salon Solitaire";
-  renderImmersiveDecor(character);
-  immersiveIntroTitle.textContent = character.immersiveIntroTitle;
-  immersiveIntroBody.textContent = character.immersiveIntroBody;
-  immersiveDetailKicker.textContent = `${character.displayName} Dossier`;
-  immersiveDetailHeading.textContent = character.immersiveDetailHeading;
-  immersiveLoreText.textContent = character.immersiveLore;
+  
+  // Fade out old texts smoothly
+  [immersiveIntroTitle, immersiveIntroBody, immersiveDetailHeading, immersiveLoreText, immersiveThemeTag, immersiveWord, immersiveMotto, immersiveSignature].forEach(el => {
+    if(el) el.style.transition = "opacity 0.6s ease, transform 0.6s ease";
+    if(el) el.style.opacity = '0';
+    if(el) el.style.transform = `translateX(${travelX * 0.5}px)`;
+  });
+
+  setTimeout(() => {
+    immersiveThemeTag.textContent = character.immersiveKicker;
+    immersiveWord.textContent = character.immersiveWord;
+    immersiveWord.setAttribute("data-text", character.immersiveWord);
+    immersiveMotto.textContent = character.typography?.motto ?? "Court of Fontaine • The Stage Never Sleeps";
+    immersiveSignature.textContent = character.typography?.signature ?? "Salon Solitaire";
+    renderImmersiveDecor(character);
+    immersiveIntroTitle.textContent = character.immersiveIntroTitle;
+    immersiveIntroBody.textContent = character.immersiveIntroBody;
+    immersiveDetailKicker.textContent = `${character.displayName} Dossier`;
+    immersiveDetailHeading.textContent = character.immersiveDetailHeading;
+    immersiveLoreText.textContent = character.immersiveLore;
+    
+    // Fade in new texts smoothly
+    [immersiveIntroTitle, immersiveIntroBody, immersiveDetailHeading, immersiveLoreText, immersiveThemeTag, immersiveWord, immersiveMotto, immersiveSignature].forEach(el => {
+      if(el) el.style.transform = `translateX(${-travelX * 0.5}px)`;
+      // small delay to let transform apply
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if(el) el.style.opacity = '';
+          if(el) el.style.transform = '';
+        });
+      });
+    });
+  }, outDuration);
+
   const renderSupplementalContent = () => {
     if (swapToken !== immersiveSwapToken) {
       return;
@@ -1598,18 +1759,18 @@ function renderImmersiveCharacter(character, options = {}) {
       { opacity: 1, transform: "translate3d(0, 0, 0) scale(1)", offset: 0 },
       {
         opacity: 0.42,
-        transform: `translate3d(${travelX * 0.58}px, 0, 0) scale(0.985)`,
+        transform: `translate3d(${travelX * 0.8}px, 0, 0) scale(0.985)`,
         offset: 0.62,
       },
       {
-        opacity: 0.02,
-        transform: `translate3d(${travelX}px, 0, 0) scale(0.96)`,
+        opacity: 0,
+        transform: `translate3d(${travelX * 1.5}px, 0, 0) scale(0.96)`,
         offset: 1,
       },
     ],
     {
       duration: outDuration,
-      easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+      easing: "cubic-bezier(0.4, 0.0, 0.2, 1)",
       fill: "forwards",
     }
   );
@@ -1618,19 +1779,14 @@ function renderImmersiveCharacter(character, options = {}) {
     [
       { opacity: 0.36, transform: "translate3d(0, 0, 0) scale(1.03)", offset: 0 },
       {
-        opacity: 0.18,
-        transform: `translate3d(${travelX * 0.16}px, 0, 0) scale(1.045)`,
-        offset: 0.58,
-      },
-      {
-        opacity: 0.08,
-        transform: `translate3d(${travelX * 0.24}px, 0, 0) scale(1.06)`,
+        opacity: 0,
+        transform: `translate3d(${travelX * 0.5}px, 0, 0) scale(1.06)`,
         offset: 1,
       },
     ],
     {
       duration: outDuration,
-      easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+      easing: "cubic-bezier(0.4, 0.0, 0.2, 1)",
       fill: "forwards",
     }
   );
@@ -1639,19 +1795,14 @@ function renderImmersiveCharacter(character, options = {}) {
     [
       {
         opacity: 0,
-        transform: `translate3d(${-travelX * 0.82}px, 0, 0) scale(1.03)`,
+        transform: `translate3d(${-travelX * 1.2}px, 0, 0) scale(1.03)`,
         offset: 0,
-      },
-      {
-        opacity: 0.58,
-        transform: `translate3d(${-travelX * 0.36}px, 0, 0) scale(1.012)`,
-        offset: 0.52,
       },
       { opacity: 1, transform: "translate3d(0, 0, 0) scale(1)", offset: 1 },
     ],
     {
       duration: inDuration,
-      easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+      easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
       fill: "forwards",
     }
   );
@@ -1659,20 +1810,15 @@ function renderImmersiveCharacter(character, options = {}) {
   const newBackdropIn = backdropClone.animate(
     [
       {
-        opacity: 0.08,
-        transform: `translate3d(${-travelX * 0.28}px, 0, 0) scale(1.08)`,
+        opacity: 0,
+        transform: `translate3d(${-travelX * 0.5}px, 0, 0) scale(1.08)`,
         offset: 0,
-      },
-      {
-        opacity: 0.26,
-        transform: `translate3d(${-travelX * 0.12}px, 0, 0) scale(1.05)`,
-        offset: 0.5,
       },
       { opacity: 0.36, transform: "translate3d(0, 0, 0) scale(1.03)", offset: 1 },
     ],
     {
       duration: inDuration,
-      easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+      easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
       fill: "forwards",
     }
   );
@@ -1800,6 +1946,9 @@ async function applyCharacterTheme(id, options = {}) {
     flushQueuedTransition();
   }
 }
+
+initCinematicGate();
+renderRosterLobby();
 
 renderCharacterMenu();
 renderCharacterQuickDots();
