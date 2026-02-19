@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:wght@500;600;700&family=Pretendard:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Hahmlet:wght@400;500;600;700&family=Pretendard:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles/main.css" />
@@ -111,7 +111,35 @@
 
     <div class="page-shell">
       <main>
-        <section class="hero" id="hero">
+        <section id="cinematicGate" class="cinematic-gate">
+          <div class="cinematic-canvas-wrap">
+            <canvas id="cinematicStars"></canvas>
+            <div class="cinematic-gradient-overlay"></div>
+            <div class="cinematic-clouds"></div>
+          </div>
+          <div class="cinematic-content">
+            <h1 class="cinematic-title">CHARACTER ARCHIVE</h1>
+            <p class="cinematic-subtitle">Teyvat Central Database</p>
+            <button id="btnEnterArchive" class="btn-enter-archive">
+              <span>Enter Archive</span>
+              <div class="btn-glow"></div>
+            </button>
+          </div>
+          <div id="cinematicFlash" class="cinematic-flash"></div>
+        </section>
+
+        <section id="rosterLobby" class="roster-lobby" aria-hidden="true">
+          <div class="roster-bg-effect"></div>
+          <div class="roster-header">
+            <h2>Select Character</h2>
+            <p>Accessing terminal nodes...</p>
+          </div>
+          <div class="roster-grid" id="rosterGrid">
+            <!-- roster cards will be injected by js -->
+          </div>
+        </section>
+
+        <section class="hero" id="hero" style="display: none;">
           <div class="hero-copy">
             <p class="eyebrow" id="heroElement">Hydro · Fontaine</p>
             <h1 id="heroName">Furina</h1>
