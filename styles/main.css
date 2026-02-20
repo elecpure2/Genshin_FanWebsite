@@ -2092,17 +2092,24 @@ section[id] {
   z-index: 6;
   left: 50%;
   bottom: clamp(-18px, -1.4vh, 8px);
+  width: min(82vw, clamp(750px, 62vh, 1320px));
+  height: clamp(540px, 85vh, 1760px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   transform: translateX(-50%);
-  width: min(82vw, 750px);
   transform-style: preserve-3d;
   will-change: transform;
 }
 
 .immersive-image {
   display: block;
-  width: 100%;
-  max-height: 85vh;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: none;
   object-fit: contain;
+  object-position: center bottom;
   filter:
     blur(var(--scene-swipe-blur-soft))
     drop-shadow(0 24px 45px rgba(12, 26, 75, 0.52))
@@ -2335,6 +2342,7 @@ section[id] {
 
   .immersive-character-wrap {
     width: min(94vw, 620px);
+    height: clamp(460px, 72vh, 760px);
     bottom: 6px;
   }
 

@@ -10,6 +10,7 @@ const rosterLobby = document.getElementById("rosterLobby");
 const rosterGrid = document.getElementById("rosterGrid");
 const heroSection = document.getElementById("hero");
 const globalTopbar = document.getElementById("globalTopbar");
+const btnReturnHome = document.getElementById("btnReturnHome");
 
 if (globalTopbar) {
   globalTopbar.style.opacity = '0';
@@ -17,42 +18,142 @@ if (globalTopbar) {
   globalTopbar.style.pointerEvents = 'none';
 }
 
+function setTopbarVisibility(isVisible) {
+  if (!globalTopbar) {
+    return;
+  }
+
+  globalTopbar.style.opacity = isVisible ? "1" : "0";
+  globalTopbar.style.visibility = isVisible ? "visible" : "hidden";
+  globalTopbar.style.pointerEvents = isVisible ? "auto" : "none";
+}
+
+function hideCharacterDetails() {
+  if (heroSection) heroSection.style.display = 'none';
+  if (gallerySection) gallerySection.style.display = 'none';
+  if (snapshotTerminalDock) snapshotTerminalDock.style.display = 'none';
+  if (immersiveDetails) immersiveDetails.style.display = 'none';
+  if (immersiveLayer) immersiveLayer.style.display = 'none';
+  setTopbarVisibility(false);
+}
+
+function showCharacterDetails() {
+  if (heroSection) heroSection.style.display = '';
+  if (gallerySection) gallerySection.style.display = '';
+  if (snapshotTerminalDock) snapshotTerminalDock.style.display = '';
+  if (immersiveDetails) immersiveDetails.style.display = '';
+  if (immersiveLayer) immersiveLayer.style.display = '';
+  setTopbarVisibility(true);
+
+  // 요소들이 다시 표시된 후 레이아웃 재계산 및 ASCII 터미널 리사이즈 보정
+  requestAnimationFrame(() => {
+    resizeParticles();
+    handlePageScroll();
+    if (typeof terminalExperience !== 'undefined' && terminalExperience.handleResize) {
+      terminalExperience.handleResize();
+    }
+  });
+}
+
+function replayRosterCardsEntrance() {
+  if (!rosterGrid) {
+    return;
+  }
+
+  const cards = rosterGrid.querySelectorAll(".roster-card");
+  cards.forEach((card, index) => {
+    card.style.opacity = "0";
+    card.style.transform = "translateY(30px) rotateX(10deg)";
+    setTimeout(() => {
+      card.style.transition = "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)";
+      card.style.opacity = "1";
+      card.style.transform = "translateY(0) rotateX(0)";
+      setTimeout(() => {
+        card.style.transition =
+          "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease";
+      }, 800);
+    }, 300 + index * 150);
+  });
+}
+
+function showRosterLobby() {
+  if (!rosterLobby) {
+    return;
+  }
+
+  rosterLobby.style.display = "flex";
+  requestAnimationFrame(() => {
+    rosterLobby.setAttribute("aria-hidden", "false");
+    rosterLobby.classList.add("is-active");
+    replayRosterCardsEntrance();
+  });
+}
+
+function hideRosterLobby() {
+  if (!rosterLobby) {
+    return;
+  }
+
+  rosterLobby.classList.remove("is-active");
+  rosterLobby.setAttribute("aria-hidden", "true");
+  setTimeout(() => {
+    rosterLobby.style.display = "none";
+  }, 1000);
+}
+
+function playFlashTransition(onMidpoint) {
+  if (!cinematicFlash) {
+    onMidpoint();
+    return;
+  }
+
+  cinematicFlash.classList.add("is-flashing");
+  setTimeout(onMidpoint, 400);
+  setTimeout(() => {
+    cinematicFlash.classList.remove("is-flashing");
+  }, 800);
+}
+
+function enterCharacterView(id) {
+  playFlashTransition(() => {
+    hideRosterLobby();
+    showCharacterDetails();
+    window.scrollTo({ top: 0, behavior: "auto" });
+    applyCharacterThemeImmediate(id, { animate: true });
+  });
+}
+
+function returnToHomeLobby() {
+  playFlashTransition(() => {
+    hideCharacterDetails();
+    if (cinematicGate) {
+      cinematicGate.classList.add("is-closed");
+    }
+    window.scrollTo({ top: 0, behavior: "auto" });
+    showRosterLobby();
+  });
+}
+
+function initializeHomeEntryState() {
+  if (cinematicGate) {
+    cinematicGate.classList.remove("is-closed");
+  }
+  if (rosterLobby) {
+    rosterLobby.style.display = "";
+    rosterLobby.setAttribute("aria-hidden", "true");
+    rosterLobby.classList.remove("is-active");
+  }
+  hideCharacterDetails();
+}
+
 function initCinematicGate() {
   if (!cinematicGate || !btnEnterArchive) return;
   
   btnEnterArchive.addEventListener("click", () => {
-    // 1. Play flash effect
-    cinematicFlash.classList.add("is-flashing");
-    
-    // 2. Hide Gate, Show Lobby after slight delay
-    setTimeout(() => {
+    playFlashTransition(() => {
       cinematicGate.classList.add("is-closed");
-      rosterLobby.setAttribute("aria-hidden", "false");
-      rosterLobby.classList.add("is-active");
-      
-      // Animate cards staggered
-      const cards = rosterGrid.querySelectorAll('.roster-card');
-      cards.forEach((card, index) => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(30px) rotateX(10deg)';
-        setTimeout(() => {
-          card.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
-          card.style.opacity = '1';
-          card.style.transform = 'translateY(0) rotateX(0)';
-          
-          // Clear transition after intro so hover works properly
-          setTimeout(() => {
-            card.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease';
-          }, 800);
-        }, 300 + (index * 150)); // Stagger
-      });
-      
-    }, 400); // Wait for flash peak
-    
-    // 3. Remove flash
-    setTimeout(() => {
-      cinematicFlash.classList.remove("is-flashing");
-    }, 800);
+      showRosterLobby();
+    });
   });
 }
 
@@ -94,35 +195,16 @@ function renderRosterLobby() {
     `;
     
     card.addEventListener("click", () => {
-      // Transition to main view
-      cinematicFlash.classList.add("is-flashing");
-      
-      setTimeout(() => {
-        rosterLobby.classList.remove("is-active");
-        rosterLobby.setAttribute("aria-hidden", "true");
-        setTimeout(() => rosterLobby.style.display = 'none', 1000);
-        
-        // Show Topbar
-        if (globalTopbar) {
-          globalTopbar.style.opacity = '1';
-          globalTopbar.style.visibility = 'visible';
-          globalTopbar.style.pointerEvents = 'auto';
-        }
-        
-        // Show Hero
-        if (heroSection) heroSection.style.display = 'grid'; // it was grid originally
-        
-        // Apply Character
-        applyCharacterThemeImmediate(id, { animate: true });
-        
-      }, 400);
-      
-      setTimeout(() => {
-        cinematicFlash.classList.remove("is-flashing");
-      }, 800);
+      enterCharacterView(id);
     });
     
     rosterGrid.appendChild(card);
+  });
+}
+
+if (btnReturnHome) {
+  btnReturnHome.addEventListener("click", () => {
+    returnToHomeLobby();
   });
 }
 
@@ -136,6 +218,7 @@ const heroName = document.getElementById("heroName");
 const heroTitle = document.getElementById("heroTitle");
 const heroDescription = document.getElementById("heroDescription");
 const heroStats = document.getElementById("heroStats");
+const gallerySection = document.getElementById("gallery");
 
 const profileHeading = document.getElementById("profileHeading");
 const profileText = document.getElementById("profileText");
@@ -191,6 +274,8 @@ const immersiveDetailHeading = document.getElementById("immersiveDetailHeading")
 const immersiveLoreText = document.getElementById("immersiveLoreText");
 const immersiveStatsGrid = document.getElementById("immersiveStatsGrid");
 const immersiveGalleryGrid = document.getElementById("immersiveGalleryGrid");
+const immersiveDetails = document.getElementById("immersiveDetails");
+const immersiveLayer = document.getElementById("immersiveLayer");
 const particleCanvas = document.getElementById("immersiveParticles");
 const charactersNavItem = document.getElementById("charactersNavItem");
 const characterMenuTrigger = document.getElementById("characterMenuTrigger");
@@ -241,6 +326,13 @@ const transitionState = {
   queued: null,
 };
 const imageAssetCache = new Map();
+const immersivePoseNormalization = {
+  baselineId: initialCharacterId,
+  baselineMetric: null,
+  metricsByCharacter: new Map(),
+  pending: null,
+  ready: false,
+};
 const transitionEngine = new WebGLTransitionEngine(immersiveTransitionCanvas, { intensity: 0.9 });
 const isLowPowerDevice =
   (typeof navigator.deviceMemory === "number" && navigator.deviceMemory <= 4) ||
@@ -291,6 +383,23 @@ function getDirectionalOffset(direction, distance) {
     return 0;
   }
   return direction > 0 ? distance : -distance;
+}
+
+function getImmersiveCharacterViewportLift() {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  if (viewportWidth <= 820) {
+    return -34;
+  }
+
+  // 해상도가 커질수록 동일한 상대 위치를 유지하도록 세로 해상도 기준으로 보정한다.
+  const baseLift = -48;
+  const heightDeltaFromFhd = viewportHeight - 1080;
+  const heightCompensation = clamp(heightDeltaFromFhd * 0.065, -16, 92);
+  const ultraWideCompensation = viewportWidth >= 2560 ? 10 : 0;
+
+  return baseLift - heightCompensation - ultraWideCompensation;
 }
 
 function getCharacterById(id) {
@@ -350,6 +459,122 @@ async function preloadCharacterAssets(id) {
   }
   const assets = getCharacterAssetPaths(character);
   await Promise.allSettled(assets.map((src) => preloadImageAsset(src)));
+}
+
+function measureOpaqueImageMetric(image) {
+  if (!image || !image.naturalWidth || !image.naturalHeight) {
+    return null;
+  }
+
+  const maxSampleSize = 420;
+  const sampleScale = Math.min(1, maxSampleSize / Math.max(image.naturalWidth, image.naturalHeight));
+  const sampleWidth = Math.max(1, Math.round(image.naturalWidth * sampleScale));
+  const sampleHeight = Math.max(1, Math.round(image.naturalHeight * sampleScale));
+  const canvas = document.createElement("canvas");
+  canvas.width = sampleWidth;
+  canvas.height = sampleHeight;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) {
+    return null;
+  }
+
+  ctx.clearRect(0, 0, sampleWidth, sampleHeight);
+  ctx.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+  const pixels = ctx.getImageData(0, 0, sampleWidth, sampleHeight).data;
+  const alphaThreshold = 12;
+
+  let top = sampleHeight;
+  let bottom = -1;
+  for (let y = 0; y < sampleHeight; y += 1) {
+    const rowOffset = y * sampleWidth * 4;
+    for (let x = 0; x < sampleWidth; x += 1) {
+      if (pixels[rowOffset + x * 4 + 3] > alphaThreshold) {
+        if (y < top) {
+          top = y;
+        }
+        if (y > bottom) {
+          bottom = y;
+        }
+      }
+    }
+  }
+
+  if (bottom < 0) {
+    return null;
+  }
+
+  const opaqueHeight = bottom - top + 1;
+  const bottomPadding = sampleHeight - 1 - bottom;
+  return {
+    opaqueHeightRatio: opaqueHeight / sampleHeight,
+    bottomPaddingRatio: bottomPadding / sampleHeight,
+  };
+}
+
+async function ensureImmersivePoseNormalization() {
+  if (immersivePoseNormalization.ready) {
+    return;
+  }
+  if (immersivePoseNormalization.pending) {
+    await immersivePoseNormalization.pending;
+    return;
+  }
+
+  immersivePoseNormalization.pending = (async () => {
+    const nextMetrics = new Map();
+
+    await Promise.allSettled(
+      characterIds.map(async (characterId) => {
+        const character = getCharacterById(characterId);
+        if (!character?.immersiveImage) {
+          return;
+        }
+        const image = await preloadImageAsset(character.immersiveImage);
+        const metric = measureOpaqueImageMetric(image);
+        if (metric) {
+          nextMetrics.set(characterId, metric);
+        }
+      })
+    );
+
+    immersivePoseNormalization.metricsByCharacter = nextMetrics;
+    immersivePoseNormalization.baselineMetric =
+      nextMetrics.get(immersivePoseNormalization.baselineId) ?? nextMetrics.values().next().value ?? null;
+    immersivePoseNormalization.ready = Boolean(immersivePoseNormalization.baselineMetric);
+  })();
+
+  try {
+    await immersivePoseNormalization.pending;
+  } finally {
+    immersivePoseNormalization.pending = null;
+  }
+}
+
+function getCharacterImmersivePoseAdjust(id) {
+  const baseResult = { scale: 1, yOffset: 0 };
+  if (!immersiveCharacterWrap || !immersivePoseNormalization.ready) {
+    return baseResult;
+  }
+
+  const baseline = immersivePoseNormalization.baselineMetric;
+  const metric = immersivePoseNormalization.metricsByCharacter.get(id);
+  if (!baseline || !metric) {
+    return baseResult;
+  }
+
+  const normalizeScale = clamp(baseline.opaqueHeightRatio / metric.opaqueHeightRatio, 0.86, 1.16);
+  const wrapRect = immersiveCharacterWrap.getBoundingClientRect();
+  const wrapHeight = Math.max(1, wrapRect.height || window.innerHeight * 0.84);
+  const normalizeYOffset = clamp(
+    wrapHeight * (metric.bottomPaddingRatio * normalizeScale - baseline.bottomPaddingRatio),
+    -120,
+    120
+  );
+
+  return {
+    scale: normalizeScale,
+    yOffset: normalizeYOffset,
+  };
 }
 
 function prewarmAdjacentCharacters(id) {
@@ -1260,10 +1485,12 @@ function updateStageTransform() {
   const swipeShiftSoft = swipeShiftMain * 0.68;
   const swipeShiftStrong = swipeShiftMain * 0.92;
   const swipeFade = clamp(1 - (swipeState.progress || 0) * 0.3, 0.62, 1);
+  const poseAdjust = getCharacterImmersivePoseAdjust(currentCharacterId);
+  const viewportLift = getImmersiveCharacterViewportLift();
 
   const baseLift = window.innerWidth >= 2560 ? -12 : 6;
-  const translateY = baseLift + stageState.progress * 92 + momentum * 6;
-  const scale = 1.1 - stageState.progress * 0.19 + speedAbs * 0.01;
+  const translateY = baseLift + viewportLift + poseAdjust.yOffset + stageState.progress * 92 + momentum * 6;
+  const scale = (1.1 - stageState.progress * 0.19 + speedAbs * 0.01) * poseAdjust.scale;
   const rotateX = -stageState.tiltY * 6;
   const rotateY = stageState.tiltX * 8;
   const introOffset = Math.max(0, 56 - stageState.progress * 140);
@@ -1732,8 +1959,10 @@ function renderImmersiveCharacter(character, options = {}) {
   imageClone.style.position = "absolute";
   imageClone.style.inset = "0";
   imageClone.style.width = "100%";
-  imageClone.style.maxHeight = "85vh";
+  imageClone.style.height = "100%";
+  imageClone.style.maxHeight = "none";
   imageClone.style.objectFit = "contain";
+  imageClone.style.objectPosition = "center bottom";
   imageClone.style.pointerEvents = "none";
   imageClone.style.willChange = "transform, opacity";
   imageClone.style.opacity = "0.12";
@@ -1872,6 +2101,8 @@ function applyCharacterThemeImmediate(id, options = {}) {
     window.getComputedStyle(root).getPropertyValue("--particle-rgb")
   );
   particleColor = rgbFromTheme;
+  ensureImmersivePoseNormalization();
+  updateStageTransform();
 }
 
 function flushQueuedTransition() {
@@ -1970,5 +2201,9 @@ window.addEventListener("resize", () => {
 applyCharacterThemeImmediate(currentCharacterId, { animate: false });
 preloadCharacterAssets(currentCharacterId);
 prewarmAdjacentCharacters(currentCharacterId);
+ensureImmersivePoseNormalization().then(() => {
+  updateStageTransform();
+});
 updateStageTransform();
 startParticles();
+initializeHomeEntryState();
