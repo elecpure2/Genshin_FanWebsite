@@ -110,25 +110,62 @@
       </div>
     </section>
 
+    <!-- 진입 화면을 page-shell 밖으로 꺼내서 스크롤 문제 완벽 차단 -->
+    <section id="cinematicGate" class="cinematic-gate">
+      <!-- 낮밤이 변하는 하늘 배경 -->
+      <div class="sky-gradient"></div>
+      
+      <!-- 별빛 배경 -->
+      <div class="stars-layer stars-layer-1"></div>
+      <div class="stars-layer stars-layer-2"></div>
+      
+      <!-- 태양/달 -->
+      <div class="celestial-body"></div>
+      
+      <!-- 빛내림 (God Rays) -->
+      <div class="god-rays"></div>
+
+      <!-- 마법 파티클 -->
+      <div class="magic-particles">
+        <div class="particle p1"></div>
+        <div class="particle p2"></div>
+        <div class="particle p3"></div>
+        <div class="particle p4"></div>
+        <div class="particle p5"></div>
+        <div class="particle p6"></div>
+      </div>
+
+      <!-- 떠다니는 구름 (SVG) -->
+      <div class="sky-clouds">
+        <svg viewBox="0 0 1440 320" preserveAspectRatio="none" class="cloud-layer cloud-back">
+          <path fill="rgba(255, 255, 255, 0.4)" d="M0,160 C320,300, 420,100, 800,200 C1100,280, 1300,100, 1440,160 L1440,320 L0,320 Z"></path>
+        </svg>
+        <svg viewBox="0 0 1440 320" preserveAspectRatio="none" class="cloud-layer cloud-front">
+          <path fill="rgba(255, 255, 255, 0.8)" d="M0,220 C280,100, 500,280, 900,180 C1200,100, 1350,220, 1440,200 L1440,320 L0,320 Z"></path>
+        </svg>
+      </div>
+
+      <!-- 중앙 텍스트 & 버튼 -->
+      <div class="cinematic-content">
+        <p class="cinematic-eyebrow">Ad Astra Abyssosque</p>
+        <h1 class="cinematic-title">GENSHIN LOUNGE</h1>
+        <div class="cinematic-divider">
+          <!-- 장식용 SVG 라인 -->
+          <svg width="200" height="20" viewBox="0 0 200 20">
+            <path d="M0,10 L80,10 L100,0 L120,10 L200,10" stroke="rgba(255,255,255,0.6)" fill="none" stroke-width="1.5"/>
+            <polygon points="100,4 106,10 100,16 94,10" fill="#fff"/>
+          </svg>
+        </div>
+        <button id="btnEnterArchive" class="btn-enter-gate">
+          <span>여정 시작하기</span>
+          <div class="btn-glow"></div>
+        </button>
+      </div>
+      <div id="cinematicFlash" class="cinematic-flash"></div>
+    </section>
+
     <div class="page-shell">
       <main>
-        <section id="cinematicGate" class="cinematic-gate">
-          <div class="cinematic-canvas-wrap">
-            <canvas id="cinematicStars"></canvas>
-            <div class="cinematic-gradient-overlay"></div>
-            <div class="cinematic-clouds"></div>
-          </div>
-          <div class="cinematic-content">
-            <h1 class="cinematic-title">CHARACTER ARCHIVE</h1>
-            <p class="cinematic-subtitle">Teyvat Central Database</p>
-            <button id="btnEnterArchive" class="btn-enter-archive">
-              <span>Enter Archive</span>
-              <div class="btn-glow"></div>
-            </button>
-          </div>
-          <div id="cinematicFlash" class="cinematic-flash"></div>
-        </section>
-
         <section id="rosterLobby" class="roster-lobby" aria-hidden="true">
           <div class="roster-bg-effect"></div>
           <div class="roster-header">

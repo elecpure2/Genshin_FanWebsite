@@ -137,6 +137,7 @@ function returnToHomeLobby() {
 function initializeHomeEntryState() {
   if (cinematicGate) {
     cinematicGate.classList.remove("is-closed");
+    document.body.style.overflow = 'hidden'; // 진입 화면에서는 스크롤 방지
   }
   if (rosterLobby) {
     rosterLobby.style.display = "";
@@ -152,6 +153,7 @@ function initCinematicGate() {
   btnEnterArchive.addEventListener("click", () => {
     playFlashTransition(() => {
       cinematicGate.classList.add("is-closed");
+      document.body.style.overflow = ''; // 스크롤 복구
       showRosterLobby();
     });
   });
