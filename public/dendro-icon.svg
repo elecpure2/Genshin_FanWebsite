@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g fill="#ffffff" opacity="0.9">
+    <!-- 원신 풀(Dendro)속성 심볼 모티브 (둥근 하트/잎사귀 형태) -->
+    <path d="M50 15 C 80 15 90 45 90 65 C 90 85 70 95 50 85 C 30 95 10 85 10 65 C 10 45 20 15 50 15 Z" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+    <path d="M50 85 L 50 35 M 30 55 C 40 45 45 40 50 35 M 70 55 C 60 45 55 40 50 35" stroke="#ffffff" stroke-width="6" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>
