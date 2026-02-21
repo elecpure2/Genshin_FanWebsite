@@ -1,41 +1,36 @@
-# Genshin Impact FanWeb (Prototype)
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-푸리나 우선 버전의 캐릭터 소개 페이지 프로토타입입니다.
+## Getting Started
 
-## 실행 방법 (가장 쉬움)
-
-1. 터미널에서 프로젝트 폴더로 이동
-2. 아래 명령 실행:
+First, run the development server:
 
 ```bash
-python -m http.server 5500
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-3. 브라우저에서 `http://localhost:5500` 접속
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## 포함된 기능
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-- 푸리나 중심의 모던/클린 첫 화면
-- 상단 Characters 메뉴 기반 캐릭터 전환 (`Furina`, `Nahida`)
-- 탭 전환 시 전역 테마(배경/배너/버튼/텍스트) 부드러운 변경
-- 푸리나 이미지 자동 배경 제거 결과물 사용
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## 자동 배경 제거 다시 실행
+## Learn More
 
-```bash
-python tools/extract_furina_cutouts.py
-```
+To learn more about Next.js, take a look at the following resources:
 
-## 저작권 및 IP(지적재산권) 고지
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-- 본 프로젝트는 원신(Genshin Impact) 세계관/캐릭터에서 영감을 받아 제작한 **비공식 팬메이드 웹 프로젝트**입니다.
-- `Genshin Impact`, 캐릭터명, 설정, 관련 고유 명칭 및 원본 IP의 권리는 각 권리자(예: HoYoverse/miHoYo/COGNOSPHERE)에 있습니다.
-- 본 저장소는 포트폴리오/학습/팬 활동 목적의 비상업 프로젝트를 전제로 합니다.
-- 본 프로젝트는 HoYoverse(또는 관련 권리자)와 공식적으로 제휴, 승인, 보증 관계가 아닙니다.
-- 권리자 요청이 있을 경우, 관련 콘텐츠는 수정 또는 삭제될 수 있습니다.
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## 리포지토리 사용 범위 안내
+## Deploy on Vercel
 
-- 현재 이 저장소는 별도의 오픈소스 라이선스를 부여하지 않았습니다(`No license`).
-- 따라서 제3자의 코드/이미지/콘텐츠 재배포, 2차 배포, 상업적 이용은 기본적으로 허용되지 않습니다.
-- 원신 원본 IP에 대한 권리는 본 저장소 소유자에게 이전되지 않으며, 각 권리자에게 귀속됩니다.
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
