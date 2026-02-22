@@ -1740,8 +1740,8 @@ section[id] {
   left: 50%;
   bottom: clamp(-18px, -1.4vh, 8px);
   transform: translateX(-50%);
-  width: 39.0625vw;
-  /* 1920px 기준 750px 고정 비율 */
+  width: max(560px, 39.0625vw);
+  /* 1920px → 750px, 3840px → 1500px, 최소 560px */
   transform-style: preserve-3d;
   will-change: transform;
 }
@@ -1974,8 +1974,7 @@ section[id] {
   }
 
   .immersive-character-wrap {
-    width: 32.29vw;
-    /* 1920px 기준 620px 고정 비율 */
+    width: max(480px, 39.0625vw);
     bottom: 6px;
   }
 
