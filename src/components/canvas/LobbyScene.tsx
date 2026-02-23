@@ -1,54 +1,30 @@
 'use client'
 
-import { Clouds, Cloud, Environment, useTexture, Text } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
-import { useRef, useMemo, useState } from 'react'
+import { Clouds, Cloud, Environment, useTexture, Text, Line } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
+import React, { useRef, useMemo, useState, useEffect } from 'react'
 import * as THREE from 'three'
+import { useSpring, a } from '@react-spring/three'
 import { CharacterCard } from './CharacterCard'
 import { LobbyCamera } from './LobbyCamera'
 import { useRouter } from 'next/navigation'
 import { HangingForest } from './HangingForest'
 import { useAppStore } from '@/store/useAppStore'
 
-// ─── Gradient Background (단색 보라를 대체하는 우주/심해 다크 그라데이션) ───
-function GradientBackground() {
-  const meshRef = useRef<THREE.Mesh>(null)
-
-  const material = useMemo(() => {
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        colorTop: { value: new THREE.Color('#ffffff') },       // 화이트
-        colorBottom: { value: new THREE.Color('#d4c4f9') }    // 화사하고 밝은 파스텔 라벤더
-      },
-      vertexShader: `
-        varying vec3 vWorldPosition;
-        void main() {
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          gl_Position = projectionMatrix * viewMatrix * worldPosition;
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 colorTop;
-        uniform vec3 colorBottom;
-        varying vec3 vWorldPosition;
-        void main() {
-          // -30부터 30까지 y축을 0~1로 정규화하여 매우 부드러운 그라데이션 생성
-          float h = normalize(vWorldPosition).y; 
-          vec3 bgCol = mix(colorBottom, colorTop, max(pow(max(h + 0.3, 0.0), 1.2), 0.0));
-          gl_FragColor = vec4(bgCol, 1.0);
-        }
-      `,
-      side: THREE.BackSide,
-      depthWrite: false, // 배경이므로 다른 모든 물체보다 항상 뒤에 렌더링
-    })
-  }, [])
+// ─── Image Background (미드저니 심연/우주 배경 이미지 맵핑) ───
+function ImageBackground() {
+  const texture = useTexture('/bg-lobby.png')
+  texture.colorSpace = THREE.SRGBColorSpace
 
   return (
-    <mesh ref={meshRef}>
-      {/* 씬 전체를 덮는 구체 (카메라는 구 안에 위치) */}
-      <sphereGeometry args={[100, 32, 32]} />
-      <primitive object={material} attach="material" />
+    <mesh>
+      <sphereGeometry args={[120, 64, 64]} />
+      <meshBasicMaterial
+        map={texture}
+        side={THREE.BackSide}
+        depthWrite={false}
+        toneMapped={false}
+      />
     </mesh>
   )
 }
@@ -67,7 +43,7 @@ function StylizedStarDust() {
       pos[i * 3 + 1] = (Math.random() - 0.5) * 60
       pos[i * 3 + 2] = (Math.random() - 0.5) * 70 - 15
       phases[i] = Math.random() * Math.PI * 2
-      sizes[i] = Math.random() * 2.0 + 1.0 // 기존보다 큼직한 빛무리
+      sizes[i] = Math.random() * 2.0 + 1.0
     }
     return { pos, phases, sizes }
   })
@@ -76,8 +52,8 @@ function StylizedStarDust() {
     return new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
-        uColor1: { value: new THREE.Color('#ffebb3') }, // 파스텔 옐로우 오렌지
-        uColor2: { value: new THREE.Color('#e0b3ff') }, // 핑크 퍼플
+        uColor1: { value: new THREE.Color('#88ccff') },
+        uColor2: { value: new THREE.Color('#d4aaff') },
       },
       vertexShader: `
         attribute float phase;
@@ -86,7 +62,7 @@ function StylizedStarDust() {
         void main() {
           vPhase = phase;
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = aSize * 40.0 * (1.0 / -mvPosition.z); // 스크린 감쇠를 약하게 하여 큼직하게 유지
+          gl_PointSize = aSize * 40.0 * (1.0 / -mvPosition.z);
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
@@ -98,22 +74,16 @@ function StylizedStarDust() {
         void main() {
           vec2 p = gl_PointCoord - vec2(0.5);
           float dist = length(p);
-          
-          // 동그랗고 선명한 툰 마법 빛무리 텍스처
           if (dist > 0.5) discard;
-          
-          // 중심은 밝고 테두리는 뽀샤시하게
           float glow = smoothstep(0.5, 0.0, dist);
-          // 천천히 숨쉬는 듯한 투명도
           float twinkle = (sin(uTime * 1.0 + vPhase) + 1.2) * 0.4;
           vec3 color = mix(uColor1, uColor2, sin(vPhase) * 0.5 + 0.5);
-          
           gl_FragColor = vec4(color, glow * twinkle);
         }
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending, // 빛 번짐 효과 강화
+      blending: THREE.AdditiveBlending,
     })
   }, [])
 
@@ -124,11 +94,8 @@ function StylizedStarDust() {
 
     const positions = pointsRef.current.geometry.attributes.position.array as Float32Array
     for (let i = 0; i < count; i++) {
-      // 아주 천천히 중력을 거슬러 위로 떠오르며 좌우로 살살 흔들림
       positions[i * 3 + 1] += delta * (0.5 + Math.sin(particleData.phases[i]) * 0.2)
       positions[i * 3] += Math.sin(state.clock.elapsedTime * 0.5 + particleData.phases[i]) * delta * 0.3
-
-      // 천장을 넘으면 바닥으로 초기화
       if (positions[i * 3 + 1] > 30) {
         positions[i * 3 + 1] = -30
       }
@@ -159,17 +126,16 @@ function AnimatedSparkleBackground() {
 
   const dummy = useMemo(() => new THREE.Object3D(), [])
 
-  // 빛망울 물리 파라미터 저장 (23차: 크기 축소, xy 범위 대폭 확장, 밀도 완화)
   const particles = useMemo(() => {
     const list = []
     for (let i = 0; i < hydroCount + dendroCount; i++) {
       list.push({
-        x: (Math.random() - 0.5) * 200, // 80 -> 200으로 가로 범위 2.5배 확장
-        y: (Math.random() - 0.5) * 120, // 60 -> 120으로 세로 범위 2배 확장
-        z: (Math.random() - 0.5) * 40 - 20, // Z축(깊이) 분포도 20 -> 40으로 여유 부여
-        speedY: Math.random() * 0.4 + 0.1,  // 속도 소폭 완화
+        x: (Math.random() - 0.5) * 200,
+        y: (Math.random() - 0.5) * 120,
+        z: (Math.random() - 0.5) * 40 - 20,
+        speedY: Math.random() * 0.4 + 0.1,
         speedX: (Math.random() - 0.5) * 0.15,
-        scale: Math.random() * 0.4 + 0.15 // 0.6+0.2 -> 0.4+0.15 크기를 전체적으로 작게 변경
+        scale: Math.random() * 0.4 + 0.15
       })
     }
     return list
@@ -178,16 +144,12 @@ function AnimatedSparkleBackground() {
   useFrame((state, delta) => {
     const time = state.clock.elapsedTime
 
-    // Hydro particles (스카이블루 물 입자가 떠오름)
     if (hydroRef.current) {
       for (let i = 0; i < hydroCount; i++) {
         const p = particles[i]
         p.y += p.speedY * delta * 5
         p.x += p.speedX * delta * 5 + Math.sin(time + i) * 0.01
-
-        // 위로 모두 날아가면 바닥에서 리스폰 (범위에 맞춰 리스폰 높이도 60으로 하향)
         if (p.y > 60) p.y = -60
-
         dummy.position.set(p.x, p.y, p.z)
         dummy.scale.setScalar(p.scale * (Math.sin(time * 2 + i) * 0.2 + 0.8))
         dummy.updateMatrix()
@@ -196,16 +158,13 @@ function AnimatedSparkleBackground() {
       hydroRef.current.instanceMatrix.needsUpdate = true
     }
 
-    // Dendro particles (연두색 풀 입자가 떠오름)
     if (dendroRef.current) {
       for (let i = 0; i < dendroCount; i++) {
         const idx = i + hydroCount
         const p = particles[idx]
         p.y += p.speedY * delta * 5
         p.x += p.speedX * delta * 5 + Math.cos(time + i) * 0.01
-
         if (p.y > 60) p.y = -60
-
         dummy.position.set(p.x, p.y, p.z)
         dummy.scale.setScalar(p.scale * (Math.sin(time * 2 + i) * 0.2 + 0.8))
         dummy.updateMatrix()
@@ -215,7 +174,6 @@ function AnimatedSparkleBackground() {
     }
   })
 
-  // 반짝거리고 영롱하게 빛나는 수정(IcosahedronGeometry) 재질
   return (
     <group position={[0, 0, -30]}>
       <instancedMesh ref={hydroRef} args={[undefined, undefined, hydroCount]}>
@@ -231,52 +189,300 @@ function AnimatedSparkleBackground() {
 }
 
 
+// ─── 진자 물리 상수 (HangingForest와 일관된 느낌) ───
+const LETTER_DAMPING = 0.97
+const LETTER_REST = 0.05
+const LETTER_MAX_VEL = 0.015
+const STRING_HEIGHT = 8
+const STRING_OFFSET_X = 0.3
+const STRING_WIDE_X = 0.42
+
+// 글자별 줄 모드: 'center' = 가운데 1개, 'wide' = 양쪽 2개
+const WIDE_CHARS = new Set(['N', 'H', 'U'])
+
+// ─── Individual Particle Letter (단일 글자 파티클 + 매달린 줄 + 진자 물리) ───
+function ParticleLetter({
+  char,
+  targetX,
+  scatterX,
+  scatterY,
+  scatterZ,
+  scatterRotX,
+  scatterRotY,
+  scatterRotZ,
+  delay,
+  active,
+  mouseWorld,
+  stringShift = 0,
+  stringWiden = 0
+}: any) {
+  const textRef = useRef<any>(null)
+  const glowRef = useRef<any>(null)
+  const pivotRef = useRef<THREE.Group>(null)
+  const innerRef = useRef<THREE.Group>(null)
+  const leftLineRef = useRef<any>(null)
+  const rightLineRef = useRef<any>(null)
+
+  // 진자 물리 상태
+  const swingAngle = useRef(0)
+  const swingVel = useRef(0)
+  const assembled = useRef(false)
+
+  // 줄 투명도 + 위치 (useFrame에서 업데이트)
+  const stringOpacity = useRef(0)
+  const stringSlideY = useRef(15)
+
+  // ── 텍스트 scatter/gather Spring ──
+  const { progress } = useSpring({
+    progress: active ? 1 : 0,
+    config: { mass: 1, tension: active ? 150 : 80, friction: active ? 25 : 40 },
+    delay: active ? delay * 1000 : 0,
+    onChange: ({ value }) => {
+      if (textRef.current) textRef.current.fillOpacity = value.progress
+      if (glowRef.current) glowRef.current.fillOpacity = value.progress * 0.8
+      assembled.current = value.progress > 0.95
+    },
+  })
+
+  // ── 줄 독립 Spring (텍스트 scatter와 완전 분리) ──
+  const { stringProgress } = useSpring({
+    stringProgress: active ? 1 : 0,
+    config: { tension: 100, friction: 30 },
+    delay: active ? delay * 1000 + 200 : 0,
+    onChange: ({ value }) => {
+      stringSlideY.current = (1 - value.stringProgress) * 15
+      stringOpacity.current = value.stringProgress * 0.3
+    },
+  })
+
+  // 텍스트 scatter 위치 (targetX 기준 상대값)
+  const posX = progress.to([0, 1], [scatterX - targetX, 0])
+  const posY = progress.to([0, 1], [scatterY, 0])
+  const posZ = progress.to([0, 1], [scatterZ, 0])
+  const rotX = progress.to([0, 1], [scatterRotX, 0])
+  const rotY = progress.to([0, 1], [scatterRotY, 0])
+  const rotZ = progress.to([0, 1], [scatterRotZ, 0])
+
+  // 글자별 줄 모드 결정
+  const isWide = WIDE_CHARS.has(char)
+  const offsetX = isWide ? STRING_WIDE_X : 0
+
+  // 줄 포인트 (글자 뒤에 배치 z=-0.1, 하단은 글자 상단에 살짝 겹침)
+  const sx = stringShift
+  const sw = stringWiden
+  const leftLine: [number, number, number][] = isWide
+    ? [[-offsetX + 0.1 + sx - sw, STRING_HEIGHT, -0.1], [-offsetX + 0.1 + sx - sw, 0.5, -0.1]]
+    : [[0.08 + sx, STRING_HEIGHT, -0.1], [0.08 + sx, 0.55, -0.1]]
+  const rightLine: [number, number, number][] = isWide
+    ? [[offsetX + sx + sw, STRING_HEIGHT, -0.1], [offsetX + sx + sw, 0.5, -0.1]]
+    : [[0.08 + sx, STRING_HEIGHT, -0.1], [0.08 + sx, 0.55, -0.1]]
+
+  // 진자 물리 + 줄 업데이트
+  useFrame(() => {
+    if (!pivotRef.current || !innerRef.current) return
+
+    // 마우스 반발 (assembled 상태에서만)
+    if (assembled.current && mouseWorld) {
+      const worldPos = new THREE.Vector3()
+      innerRef.current.getWorldPosition(worldPos)
+      const dx = worldPos.x - mouseWorld.x
+      const dy = worldPos.y - mouseWorld.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      if (dist < 2.5) {
+        const force = (2.5 - dist) * 0.002
+        const direction = dx > 0 ? 1 : -1
+        swingVel.current += direction * force
+      }
+    }
+
+    // 복원 + 감쇠
+    swingVel.current -= swingAngle.current * LETTER_REST
+    swingVel.current *= LETTER_DAMPING
+    if (Math.abs(swingVel.current) > LETTER_MAX_VEL) {
+      swingVel.current = Math.sign(swingVel.current) * LETTER_MAX_VEL
+    }
+    swingAngle.current += swingVel.current
+
+    // 비활성 시 서서히 멈춤
+    if (!assembled.current) {
+      swingAngle.current *= 0.95
+      swingVel.current *= 0.95
+    }
+
+    pivotRef.current.rotation.z = swingAngle.current
+
+    // 줄 material 업데이트 (opacity + Y 슬라이드)
+    if (leftLineRef.current) {
+      leftLineRef.current.material.opacity = stringOpacity.current
+      leftLineRef.current.position.y = stringSlideY.current
+    }
+    if (rightLineRef.current) {
+      rightLineRef.current.material.opacity = stringOpacity.current
+      rightLineRef.current.position.y = stringSlideY.current
+    }
+  })
+
+  return (
+    <group position={[targetX, 0, 0]}>
+      <group ref={pivotRef} position={[0, STRING_HEIGHT, 0]}>
+        <group ref={innerRef} position={[0, -STRING_HEIGHT, 0]}>
+
+          {/* ── 줄: 독립 애니메이션, scatter 회전 NOT 추종 ── */}
+          <Line ref={leftLineRef} points={leftLine} color="#ffeab8" lineWidth={1} transparent opacity={0} />
+          {isWide && (
+            <Line ref={rightLineRef} points={rightLine} color="#ffeab8" lineWidth={1} transparent opacity={0} />
+          )}
+
+          {/* ── 텍스트: scatter/gather 애니메이션 (줄과 분리) ── */}
+          <a.group position-x={posX} position-y={posY} position-z={posZ}
+            rotation-x={rotX} rotation-y={rotY} rotation-z={rotZ}>
+            <Text
+              ref={textRef}
+              font="https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-tbnTYo.ttf"
+              fontSize={1.5}
+              color="#ffffff"
+              anchorX="center"
+              anchorY="middle"
+              letterSpacing={0.1}
+              fillOpacity={0}
+              material-transparent={true}
+              material-depthWrite={false}
+            >
+              {char}
+            </Text>
+
+            <Text
+              ref={glowRef}
+              font="https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-tbnTYo.ttf"
+              fontSize={1.5}
+              color="#88ccff"
+              anchorX="center"
+              anchorY="middle"
+              letterSpacing={0.1}
+              position={[0, 0, -0.05]}
+              fillOpacity={0}
+              material-transparent={true}
+              material-depthWrite={false}
+            >
+              {char}
+            </Text>
+          </a.group>
+
+        </group>
+      </group>
+    </group>
+  )
+}
+
+// ─── Particle Shatter Text (캐릭터 선택 시 산산조각 났다가 모이는 3D 텍스트) ───
+function ParticleText({ text, active, position }: { text: string, active: boolean, position: [number, number, number] }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const { mouse } = useThree()
+  const mouseWorld = useRef(new THREE.Vector3())
+
+  const chars = text.split('')
+
+  const charData = useMemo(() => {
+    // 글자별 줄 X 미세 조정 (텍스트별 개별 튜닝)
+    const shifts: Record<string, number[]> = {
+      'NAHIDA': [0, -0.06, 0, 0, 0, 0],
+    }
+    const widens: Record<string, number[]> = {
+      'NAHIDA': [0.04, 0, 0, 0, 0, 0],
+    }
+    const charShifts = shifts[text] || []
+    const charWidens = widens[text] || []
+
+    return chars.map((char, i) => ({
+      char,
+      scatterX: (Math.random() - 0.5) * 15,
+      scatterY: (Math.random() - 0.5) * 15,
+      scatterZ: (Math.random() - 0.5) * 15 - 5,
+      scatterRotX: Math.random() * Math.PI * 4,
+      scatterRotY: Math.random() * Math.PI * 4,
+      scatterRotZ: Math.random() * Math.PI * 4,
+      targetX: i * 1.5 - (chars.length * 1.5) / 2,
+      delay: i * 0.05,
+      stringShift: charShifts[i] || 0,
+      stringWiden: charWidens[i] || 0
+    }))
+  }, [chars])
+
+  useFrame((state) => {
+    if (!groupRef.current) return
+    groupRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 1.5) * 0.2
+
+    // 카메라 unproject로 정확한 마우스-월드 좌표 계산 (Z-plane에 맞춤)
+    const cam = state.camera
+    const ndc = new THREE.Vector3(mouse.x, mouse.y, 0.5)
+    ndc.unproject(cam)
+    const dir = ndc.sub(cam.position).normalize()
+    const t = (position[2] - cam.position.z) / dir.z
+    mouseWorld.current.copy(cam.position).add(dir.clone().multiplyScalar(t))
+  })
+
+  return (
+    <group ref={groupRef} position={position}>
+      {charData.map((data, i) => (
+        <ParticleLetter key={i} active={active} mouseWorld={mouseWorld.current} {...data} />
+      ))}
+    </group>
+  )
+}
+
 // ─── Main Lobby Scene ───
 export function LobbyScene() {
   const [activeCard, setActiveCard] = useState<string | null>(null)
   const router = useRouter()
   const bgLightRef = useRef<THREE.PointLight>(null)
+  const forestRef = useRef<THREE.Group>(null)
 
   const { setTransitionType, setTransitionState, setGlobalVolume } = useAppStore()
 
   useFrame((state, delta) => {
     if (bgLightRef.current) {
-      // 파스텔 톤에 어울리는 아주 약하고 화사한 간접광 (어두운 조명 제거)
       const targetColor = new THREE.Color(
         activeCard === 'furina'
-          ? '#e6f2ff' // 밝은 소라색/스카이블루
+          ? '#e6f2ff'
           : activeCard === 'nahida'
-            ? '#f2ffe6' // 밝은 연두/라임
-            : '#ffffff' // 기본은 깨끗한 화이트오라
+            ? '#f2ffe6'
+            : '#ffffff'
       )
       bgLightRef.current.color.lerp(targetColor, delta * 3)
       bgLightRef.current.intensity = THREE.MathUtils.lerp(bgLightRef.current.intensity, activeCard ? 1.5 : 0.5, delta * 3)
     }
+
+    // 카드 선택 시 배경 오브먼트를 서서히 흐리게 (시각적 집중)
+    if (forestRef.current) {
+      const targetOpacity = activeCard ? 0.15 : 1
+      forestRef.current.children.forEach(child => {
+        child.traverse(obj => {
+          if ((obj as any).material) {
+            const mat = (obj as any).material
+            if (mat.opacity !== undefined) {
+              mat.opacity = THREE.MathUtils.lerp(mat.opacity, targetOpacity, delta * 3)
+            }
+          }
+        })
+      })
+    }
   })
 
   const handleCardClick = (character: 'furina' | 'nahida') => {
-    // 18차: 1st Click (Focus) - 카드가 선택되지 않은 상태라면 중앙으로 가져오기만 함
     if (activeCard !== character) {
-      // 25차: 카메라 줌인 오디오 효과 적용 (첫 클릭 시)
       const sweepAudio = new Audio('/sfx/Sweep.wav')
-      sweepAudio.volume = 0.5
+      sweepAudio.volume = 0.15
       sweepAudio.play().catch(e => console.error("Sweep.wav play failed:", e))
 
       setActiveCard(character)
-      return // 여기서 종료 (포커스 유지)
+      return
     }
 
-    // 18차: 2nd Click (Transition & Routing) - 이미 중앙에 있는 카드를 한 번 더 눌렀을 때
-    // 선택된 캐릭터에 맞춘 전환(Transition) 타입 설정
     setTransitionType(character === 'furina' ? 'water' : 'leaf')
-    // 화면 덮기 애니메이션 발동
     setTransitionState('in')
-
-    // 오디오 서서히 줄이기 (BGM, WindChime 모두 GlobalAudio에서 처리될 수 있도록 0 세팅)
     setGlobalVolume(0)
 
-    // 30차: 셰이더 트랜지션이 화면을 완전히 덮을 때까지 충분한 시간 대기 (2.0초)
-    // -> GlobalTransition.tsx의 useFrame lerp 속도로 화면이 꽉 찬 뒤 라우팅 진행
     setTimeout(() => {
       router.push(`/character/${character}`)
     }, 2000)
@@ -284,30 +490,23 @@ export function LobbyScene() {
 
   return (
     <>
-      {/* 11차: 셰이더/보석의 회색 현상 완전 해결 (HDRI 환경광을 주입해 영롱하게 빛과 색을 반사시킴) */}
-      <Environment preset="sunset" />
+      <Environment preset="night" />
 
-      {/* 11차: 파스텔 라벤더 그라데이션 배경 */}
-      <GradientBackground />
-      {/* 공기 원근감을 위한 파스텔 포그 */}
-      <fog attach="fog" args={['#d4c4f9', 20, 80]} />
+      <ImageBackground />
+      <fog attach="fog" args={['#0a0816', 40, 140]} />
 
-      {/* 13차: 텍스트 타이포그래피 완전히 삭제함 */}
-
-      {/* 14차: 못생긴 큰 패턴 SVG 버리고 아기자기한 작은 정20면체 수정 파티클 요소들 추가 */}
+      {/* 14차: 아기자기한 작은 정20면체 수정 파티클 */}
       <AnimatedSparkleBackground />
 
-      {/* 22차: 빈 공간(배경) 클릭 시 카드 선택 해제 및 카메라 줌아웃을 위한 투명 Mesh */}
+      {/* 빈 공간(배경) 클릭 시 카드 선택 해제 */}
       <mesh
         position={[0, 0, -35]}
         onClick={(e) => {
           if (activeCard) {
             e.stopPropagation()
-            // 25차: 카메라 줌아웃(캐릭터 카드 해제) 오디오 효과 적용
             const sweepAudio = new Audio('/sfx/Sweep.wav')
-            sweepAudio.volume = 0.5
+            sweepAudio.volume = 0.15
             sweepAudio.play().catch(e => console.error("Sweep.wav play failed:", e))
-
             setActiveCard(null)
           }
         }}
@@ -318,27 +517,20 @@ export function LobbyScene() {
 
       <LobbyCamera activeCard={activeCard} />
 
-      {/* Dynamic Morphing Light - Provides ambient character color wash */}
       <pointLight ref={bgLightRef} position={[0, 10, -10]} distance={80} intensity={1} color="#ffffff" />
-
-      {/* Bright, angelic ambient lighting (전반적인 톤을 올려 어둡지 않게) */}
-      <ambientLight intensity={0.8} color="#ffffff" />
-
-      {/* 부드러운 전면-측면 광원 (카툰 셰이딩의 하이라이트를 선명하게 그림) */}
-      <directionalLight position={[10, 20, 10]} intensity={1.5} color="#fff1e6" castShadow />
-
-      {/* 뒷쪽에서 오는 신비로운 보라빛 반사광 (툰 셰이딩의 그림자 영역을 우아하게 채움) */}
-      <directionalLight position={[-15, -10, -15]} intensity={0.8} color="#cc99ff" />
+      <ambientLight intensity={0.4} color="#ffffff" />
+      <directionalLight position={[10, 20, 10]} intensity={1.5} color="#e0f0ff" castShadow />
+      <directionalLight position={[-15, -10, -15]} intensity={1.5} color="#9966ff" />
 
       {/* ─── Stylized Stardust & Atmosphere ─── */}
       <StylizedStarDust />
 
       {/* ─── Hanging Forest Art Installation (Vector Style) ─── */}
-      {/* 14차: 밀도를 150에서 250으로 극대화하여 훨씬 더 촘촘하고 예쁜 모빌 숲 조성 */}
-      <HangingForest count={250} areaSize={50} />
+      <group ref={forestRef}>
+        <HangingForest count={250} areaSize={50} />
+      </group>
 
       {/* Character Cards */}
-      {/* 카드 위치는 사용자가 숲 한가운데 벤치에 앉아 바라보는 듯한 느낌으로 고정 */}
       <CharacterCard
         position={[-5, 0.5, -12]}
         rotation={[0, 0.2, 0]}
@@ -347,6 +539,11 @@ export function LobbyScene() {
         onCardClick={handleCardClick}
         activeCard={activeCard}
       />
+
+      <React.Suspense fallback={null}>
+        <ParticleText text="FURINA" active={activeCard === 'furina'} position={[2, 0.5, -15]} />
+      </React.Suspense>
+
       <CharacterCard
         position={[6, 2, -15]}
         rotation={[0, -0.2, 0]}
@@ -355,6 +552,10 @@ export function LobbyScene() {
         onCardClick={handleCardClick}
         activeCard={activeCard}
       />
+
+      <React.Suspense fallback={null}>
+        <ParticleText text="NAHIDA" active={activeCard === 'nahida'} position={[13, 2, -18]} />
+      </React.Suspense>
     </>
   )
 }

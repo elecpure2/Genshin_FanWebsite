@@ -3,7 +3,7 @@
 import { useFrame, ThreeEvent } from '@react-three/fiber'
 import React, { useRef, useMemo, useState, useEffect } from 'react'
 import * as THREE from 'three'
-import { useTexture } from '@react-three/drei'
+import { useTexture, Text } from '@react-three/drei'
 
 interface CharacterCardProps {
   position: [number, number, number]
@@ -30,9 +30,8 @@ function createRoundedRectShape(width: number, height: number, radius: number) {
 }
 
 // ─── Subtle Elemental Particles ───
-// 심플하고 고요한 파티클 연출 (마우스를 올렸을 때만 천천히 소용돌이침)
 function ElementalAura({ active, character }: { active: boolean; character: 'furina' | 'nahida' }) {
-  const count = 50 // 개수를 줄여서 덜 산만하게
+  const count = 50
   const pointsRef = useRef<THREE.Points>(null)
   const isFurina = character === 'furina'
 
@@ -40,11 +39,10 @@ function ElementalAura({ active, character }: { active: boolean; character: 'fur
     const pos = new Float32Array(count * 3)
     const phases = new Float32Array(count)
     for (let i = 0; i < count; i++) {
-      // 카드 테두리를 따라 빙글빙글 도는 위치
       const angle = Math.random() * Math.PI * 2
       pos[i * 3] = Math.cos(angle) * (2.2 + Math.random() * 0.5)
       pos[i * 3 + 1] = Math.sin(angle) * (3.8 + Math.random() * 0.5)
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 0.5 + 0.2 // 카드보다 조금 앞에
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 0.5 + 0.2
 
       phases[i] = Math.random() * Math.PI * 2
     }
@@ -99,12 +97,10 @@ function ElementalAura({ active, character }: { active: boolean; character: 'fur
 
     if (mat.uniforms.uActive.value > 0.01) {
       const positions = pointsRef.current.geometry.attributes.position.array as Float32Array
-      // 천천히 회전
       for (let i = 0; i < count; i++) {
         const x = positions[i * 3]
         const y = positions[i * 3 + 1]
 
-        // 카드 형태에 맞게 타원형 궤도로 회전
         const angle = Math.atan2(y, x * 1.8) + delta * 0.5 * (active ? 1 : 0.2)
         const radius = Math.sqrt(x * x + (y / 1.8) * (y / 1.8))
 
@@ -126,6 +122,73 @@ function ElementalAura({ active, character }: { active: boolean; character: 'fur
   )
 }
 
+// ─── Outer Glow (테두리 바깥 원소 글로우 — NormalBlending으로 Bloom 간섭 없음) ───
+function OuterGlow({ hovered, character }: { hovered: boolean; character: 'furina' | 'nahida' }) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const isFurina = character === 'furina'
+
+  const glowMaterial = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(isFurina ? '#4499dd' : '#55aa44') },
+        uIntensity: { value: 0 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        uniform float uIntensity;
+        varying vec2 vUv;
+
+        float udRoundBox(vec2 p, vec2 b, float r) {
+          return length(max(abs(p) - b + r, 0.0)) - r;
+        }
+
+        void main() {
+          vec2 pos = (vUv - 0.5) * vec2(6.0, 10.4);
+          float d = udRoundBox(pos, vec2(2.25, 4.0), 0.4);
+
+          // 카드 안쪽은 절대 그리지 않음
+          if (d < 0.15) discard;
+
+          // 바깥쪽으로 부드러운 글로우
+          float glow = exp(-d * 3.0);
+
+          // Plane 가장자리 페이드아웃
+          vec2 edge = smoothstep(0.0, 0.15, min(vUv, 1.0 - vUv));
+          float edgeFade = edge.x * edge.y;
+
+          float alpha = glow * uIntensity * edgeFade;
+          if (alpha < 0.005) discard;
+
+          gl_FragColor = vec4(uColor, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+    })
+  }, [isFurina])
+
+  useFrame((_state, delta) => {
+    if (!meshRef.current) return
+    const mat = meshRef.current.material as THREE.ShaderMaterial
+    const target = hovered ? 0.6 : 0.2
+    mat.uniforms.uIntensity.value = THREE.MathUtils.lerp(mat.uniforms.uIntensity.value, target, delta * 5)
+  })
+
+  return (
+    <mesh ref={meshRef} position={[0, 0, -0.01]} renderOrder={0}>
+      <planeGeometry args={[6.0, 10.4]} />
+      <primitive object={glowMaterial} attach="material" />
+    </mesh>
+  )
+}
+
 // ─── Main Character Card ───
 export function CharacterCard({
   position,
@@ -143,34 +206,74 @@ export function CharacterCard({
   const [targetRotation, setTargetRotation] = useState({ x: 0, y: 0 })
   const isFurina = character === 'furina'
 
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-
   const isSelected = activeCard === character
   const isOtherSelected = activeCard !== null && activeCard !== character
 
   // Load character texture
   const characterTexture = useTexture(isFurina ? '/images/Upperbody.png' : '/images/nahida.png')
 
-  // 15차: 클램핑(늘어짐/찌그러짐) 현상을 원천 차단하기 위해 텍스처 자체 UV 구부리기 폐기.
   useEffect(() => {
     characterTexture.colorSpace = THREE.SRGBColorSpace
   }, [characterTexture])
 
   // Card shape and Frame shapes
-  const cardShape = useMemo(() => createRoundedRectShape(4.5, 8.0, 0.4), [])
+  const cardShape = useMemo(() => createRoundedRectShape(4.35, 7.85, 0.35), [])
   const frameShape = useMemo(() => {
-    // 얇고 우아한 금속 테두리를 위해 폭을 좁힘
-    const outer = createRoundedRectShape(4.55, 8.05, 0.42)
-    const inner = createRoundedRectShape(4.45, 7.95, 0.38)
+    const outer = createRoundedRectShape(4.5, 7.95, 0.38)
+    const inner = createRoundedRectShape(4.38, 7.83, 0.34)
     outer.holes.push(inner)
     return outer
   }, [])
 
-  // 15차: 커스텀 프래그먼트 셰이더 (ShaderMaterial) 마스킹
-  // 배경을 삼키는 투명도 버그(Stencil)나 이미지가 구겨지는(Shape) 현상을 피하기 위해
-  // 텍스처를 단순 사각형(Plane)으로 그리되, 둥근 모서리 바깥쪽 픽셀을 강제로 지워버립니다.
+  // 프레임 시머 셰이더 머티리얼
+  const frameMaterial = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uColor1: { value: new THREE.Color(isFurina ? '#5b8fb9' : '#5a9a72') },
+        uColor2: { value: new THREE.Color(isFurina ? '#a3cde8' : '#9fd4b3') },
+        uTime: { value: 0 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vPos;
+        void main() {
+          vUv = uv;
+          vPos = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor1;
+        uniform vec3 uColor2;
+        uniform float uTime;
+        varying vec2 vUv;
+        varying vec3 vPos;
+
+        void main() {
+          // 세로 방향 그라데이션 (아래→위로 밝아짐)
+          float grad = smoothstep(-4.0, 4.0, vPos.y);
+          vec3 baseColor = mix(uColor1, uColor2, grad);
+
+          // 시머: 대각선으로 빛줄기가 스르르 지나가는 효과
+          float diagonal = vPos.x * 0.7 + vPos.y;
+          // 3초 주기: 2초간 스윕, 1초간 쉼
+          float cycle = mod(uTime, 3.0);
+          float sweepPos = cycle < 2.0
+            ? mix(-6.0, 6.0, cycle / 2.0)
+            : 99.0;
+          float shimmerDist = abs(diagonal - sweepPos);
+          float shimmer = smoothstep(1.2, 0.0, shimmerDist) * 0.55;
+
+          vec3 finalColor = baseColor + vec3(shimmer);
+          gl_FragColor = vec4(finalColor, 1.0);
+        }
+      `,
+      transparent: false,
+    })
+  }, [isFurina])
+
+  // 이미지 셰이더 (SDF 마스킹 + premultiplied alpha)
   const imageMaterial = useMemo(() => {
-    // 좌표 계산용 SDF 거리 함수 및 투명도 깎기 셰이더
     const vertexShader = `
       varying vec2 vUv;
       void main() {
@@ -188,47 +291,51 @@ export function CharacterCard({
 
       varying vec2 vUv;
 
-      // 둥근 사각형 거리 공식 (Signed Distance Field)
       float udRoundBox( vec2 p, vec2 b, float r ) {
         return length(max(abs(p)-b+r,0.0))-r;
       }
 
       void main() {
-        // 이미지의 원래 컬러
         vec4 color = texture2D(uTexture, vUv);
         
-        // 현재 픽셀이 Plane 중심(0,0)으로부터 떨어진 절대 거리
         vec2 pos = (vUv - 0.5) * uPlaneSize - uOffset;
-        
-        // 우리가 자르려는 액자의 크기 바운더리
         vec2 boxHalfSize = uSize * 0.5;
 
         float d = udRoundBox(pos, boxHalfSize, uRadius);
-
-        // 둥근 모서리 밖으로 넘어간 픽셀이면 alpha가 급격히 0이 됨 (부드러운 잘림 Anti-aliasing)
         float alphaMask = 1.0 - smoothstep(0.0, 0.02, d);
 
-        gl_FragColor = vec4(color.rgb, color.a * alphaMask * 0.95);
+        // premultiplied alpha: 투명 영역의 RGB도 0으로 만들어 색상 누출/Bloom 증폭 방지
+        float finalAlpha = color.a * alphaMask * 0.95;
+        if (finalAlpha < 0.01) discard;
+        gl_FragColor = vec4(color.rgb * finalAlpha, finalAlpha);
       }
     `;
 
     return new THREE.ShaderMaterial({
       uniforms: {
         uTexture: { value: characterTexture },
-        uRadius: { value: 0.4 },
-        uSize: { value: new THREE.Vector2(4.5, 8.0) }, // 잘라서 보여줄 카드 크기
-        uPlaneSize: { value: new THREE.Vector2(isFurina ? 5.2 : 5.04, isFurina ? 9.2 : 9.0) }, // 실제 그리는 Plane 크기
-        uOffset: { value: new THREE.Vector2(0, 0) } // 마스크 좌표 이동 없음 (Frame과 물리적 [0,0] 완벽 고정)
+        uRadius: { value: 0.35 },
+        uSize: { value: new THREE.Vector2(4.3, 7.8) },
+        uPlaneSize: { value: new THREE.Vector2(isFurina ? 5.2 : 5.04, isFurina ? 9.2 : 9.0) },
+        uOffset: { value: new THREE.Vector2(0, 0) }
       },
       vertexShader,
       fragmentShader,
       transparent: true,
-      depthWrite: false, // 투명 객체 겹침 렌더 오류 방지
+      depthWrite: false,
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneMinusSrcAlphaFactor,
+      blendSrcAlpha: THREE.OneFactor,
+      blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
     })
   }, [characterTexture, isFurina])
 
   useFrame((state, delta) => {
     if (!groupRef.current) return
+
+    // 시머 애니메이션 업데이트
+    frameMaterial.uniforms.uTime.value = state.clock.elapsedTime
 
     // If another card is selected, fade out and move away
     if (isOtherSelected) {
@@ -242,16 +349,13 @@ export function CharacterCard({
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, position[1], delta * 4)
       groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, position[2], delta * 4)
 
-      // 카메라를 향해 반듯하게 정면(0,0,0)을 바라봄
       groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, 0, delta * 8)
       groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, 0, delta * 8)
       groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, 0, delta * 8)
 
       if (tiltGroupRef.current) {
-        // 클릭되었을 때 어중간하게 틀어진 상태가 유지되지 않도록 회전 복구
         tiltGroupRef.current.rotation.x = THREE.MathUtils.lerp(tiltGroupRef.current.rotation.x, 0, delta * 12)
         tiltGroupRef.current.rotation.y = THREE.MathUtils.lerp(tiltGroupRef.current.rotation.y, 0, delta * 12)
-        // 19차: 클릭 리액션을 위해 수축했던 Scale을 원상 복구(탄력 바운스)
         tiltGroupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), delta * 10)
       }
       return
@@ -268,29 +372,22 @@ export function CharacterCard({
     groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, rotation[1], delta * 5)
     groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, rotation[2], delta * 5)
 
-    // Smooth tilt on inner group
     if (tiltGroupRef.current) {
       tiltGroupRef.current.rotation.x = THREE.MathUtils.lerp(tiltGroupRef.current.rotation.x, targetRotation.x, delta * 5)
       tiltGroupRef.current.rotation.y = THREE.MathUtils.lerp(tiltGroupRef.current.rotation.y, targetRotation.y, delta * 5)
-      // 19차: 일반 떠있는 상태에서도 클릭 시 수축했던 Scale을 원상 복구
       tiltGroupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), delta * 10)
     }
-
-    // 15차: 마스크와 이미지가 완벽한 1:1로 고정되어야 클리핑(썰림)이 어긋나지 않으므로, 
-    // 마우스를 따라 속의 이미지가 유영하던 Parallax 로직(imageRef.current.position 변경)을 삭제했습니다.
   })
 
-  // 틸트 감도 완화 (자연스럽게)
   const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
     if ((activeCard && activeCard !== character) || !e.uv) return
     const x = (e.uv.x - 0.5) * 2
     const y = (e.uv.y - 0.5) * 2
 
     setTargetRotation({
-      x: -y * 0.1, // 기울기 값 감소
+      x: -y * 0.1,
       y: x * 0.1,
     })
-    setMousePos({ x, y })
   }
 
   const handlePointerOver = () => {
@@ -303,24 +400,19 @@ export function CharacterCard({
     if (activeCard && activeCard !== character) return
     setHovered(false)
     setTargetRotation({ x: 0, y: 0 })
-    setMousePos({ x: 0, y: 0 })
     document.body.style.cursor = 'auto'
   }
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
-    // 다른 카드가 이미 active 상태라면 무시
     if (activeCard && activeCard !== character) return
     document.body.style.cursor = 'auto'
 
-    // 19차: 클릭(타격) 반응! 카드를 살짝 수축시켰다가 튕겨 오르게(Bounce) 만듦
     if (tiltGroupRef.current) {
       tiltGroupRef.current.scale.set(0.85, 0.85, 0.85)
     }
 
-    // 클릭 즉시 마우스 방향에서 보던 틸트 각도를 0으로 초기화하여 정면 보장
     setTargetRotation({ x: 0, y: 0 })
-
     onCardClick(character)
   }
 
@@ -338,52 +430,50 @@ export function CharacterCard({
       </mesh>
 
       <group ref={tiltGroupRef}>
-        {/* 1. Glass Base (뒷배경이 투영되는 투명한 크리스탈 바탕) */}
-        {/* MeshTransmissionMaterial이 투명 오브젝트(캐릭터)를 통째로 삼켜버리는 버그를 방지하기 위해
-            순수 meshPhysicalMaterial을 사용하여 가장 뒤에 렌더링합니다. */}
+        {/* 1. Glass Base — 불투명 배경으로 씬 오브젝트 차단 */}
         <mesh position={[0, 0, 0]} renderOrder={1}>
           <shapeGeometry args={[cardShape]} />
-          <meshPhysicalMaterial
-            transparent
-            opacity={0.4}
-            roughness={0.1}
-            metalness={0.5}
-            clearcoat={1.0}
-            clearcoatRoughness={0.1}
-            color="#0a1220" /* 살짝 어두운 크리스탈 톤으로 가시성 확보 */
-          />
+          <meshBasicMaterial color="#0e1525" />
         </mesh>
 
-        {/* 2. Character image (Mapped onto a perfect Plane, cut perfectly by ShaderMaterial mask) */}
+        {/* 2. Character image (ShaderMaterial SDF 마스크) */}
         <group ref={imageRef} position={[0, -0.01, 0.04]} renderOrder={2}>
           <mesh material={imageMaterial}>
             <planeGeometry args={isFurina ? [5.2, 9.2] : [5.0, 9.0]} />
           </mesh>
         </group>
 
-        {/* 4. 얇고 뽀얀 화이트 반투명 유리 테두리 프레임 (레퍼런스 UI풍 감성) */}
+        {/* 4. 원소 색상 그라데이션 + 시머 테두리 프레임 */}
         <mesh position={[0, 0, 0.05]} renderOrder={3}>
           <shapeGeometry args={[frameShape]} />
-          <meshPhysicalMaterial
-            color="#ffffff"
-            transmission={0.5} // 살짝 반투명한 유리 테두리
-            opacity={1}
-            transparent={true}
-            roughness={0.2}
-            clearcoat={1.0}
-            emissive="#ffffff"
-            emissiveIntensity={hovered ? 0.6 : 0.2} // 마우스 오버 시 화이트 엣지가 환하게 빛남
-          />
+          <primitive object={frameMaterial} attach="material" />
         </mesh>
 
-        {/* 4. 매달림 끈 (Hanging Line) 추가: 천장(우주 끝)부터 카드 가장 위쪽까지 떨어지는 무한한 실선 */}
+        {/* 5. 테두리 바깥 원소 글로우 */}
+        <OuterGlow hovered={hovered} character={character} />
+
+        {/* 7. 캐릭터 이름 텍스트 */}
+        <Text
+          position={[0, -4.5, 0.08]}
+          fontSize={0.45}
+          color={isFurina ? '#aaddff' : '#bbeeaa'}
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.2}
+          font="https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-tbnTYo.ttf"
+          material-transparent={true}
+          material-depthWrite={false}
+        >
+          {isFurina ? 'FURINA' : 'NAHIDA'}
+        </Text>
+
+        {/* 8. 매달림 끈 (Hanging Line) */}
         <mesh position={[0, 50 + 4, 0]} renderOrder={0}>
-          {/* Cylinder (반지름 위, 반지름 아래, 길이, 분할수) */}
           <cylinderGeometry args={[0.015, 0.015, 100, 8]} />
           <meshBasicMaterial color="#ffeab8" transparent opacity={0.3} />
         </mesh>
 
-        {/* 6. 은은한 원소 아우라 & 파티클 */}
+        {/* 9. 은은한 원소 아우라 & 파티클 */}
         <ElementalAura active={hovered} character={character} />
 
       </group>

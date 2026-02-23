@@ -55,16 +55,16 @@ export function HangingForest({ count = 80, areaSize = 35 }: HangingForestProps)
 
             let color: THREE.Color
             if (decType === 'star') {
-                // 별: 영롱하고 따뜻한 샴페인/레몬 골드 보석
-                const hue = THREE.MathUtils.lerp(0.1, 0.15, Math.random()) // 주황~노랑
-                const sat = THREE.MathUtils.lerp(0.6, 0.9, Math.random())
-                const lit = THREE.MathUtils.lerp(0.7, 0.9, Math.random())
+                // 별: 따뜻한 샴페인/골드 — 밝기 차이로 다양함 연출
+                const hue = THREE.MathUtils.lerp(0.1, 0.15, Math.random())
+                const sat = THREE.MathUtils.lerp(0.5, 0.9, Math.random())
+                const lit = THREE.MathUtils.lerp(0.5, 0.95, Math.random()) // 범위 확대: 어두운 금빛~밝은 크림
                 color = new THREE.Color().setHSL(hue, sat, lit)
             } else {
-                // 달: 은은하고 창백한 은빛/아이스블루 크리스탈
-                const hue = THREE.MathUtils.lerp(0.55, 0.65, Math.random()) // 시안~아이스블루
-                const sat = THREE.MathUtils.lerp(0.3, 0.6, Math.random())
-                const lit = THREE.MathUtils.lerp(0.8, 0.95, Math.random())
+                // 달: 은빛/아이스블루 — 밝기 차이로 다양함 연출
+                const hue = THREE.MathUtils.lerp(0.12, 0.18, Math.random()) // 금빛 톤으로 통일
+                const sat = THREE.MathUtils.lerp(0.3, 0.7, Math.random())
+                const lit = THREE.MathUtils.lerp(0.5, 0.95, Math.random()) // 범위 확대
                 color = new THREE.Color().setHSL(hue, sat, lit)
             }
 
@@ -88,21 +88,15 @@ export function HangingForest({ count = 80, areaSize = 35 }: HangingForestProps)
     const moonColorsArray = useMemo(() => new Float32Array(count * 3), [count])
     const dummy = useMemo(() => new THREE.Object3D(), [])
 
-    // 3. 재질: 영롱하게 빛나고 굴절되는 서브컬처 보석/유리 (Jewel Crystal)
+    // 3. 재질: 은은하게 빛나는 금빛 장식 (instance color로 밝기 다양성)
     const jewelMaterial = useMemo(() => {
-        return new THREE.MeshPhysicalMaterial({
-            color: '#ffffff', // InstancedColor로 개별 착색
-            transmission: 0.8, // 유리처럼 맑게 빛을 투과
-            opacity: 1,
-            transparent: true,
-            roughness: 0.1, // 표면을 매끄럽게 하여 쨍한 하이라이트/반사 극대화
-            metalness: 0.1,
-            ior: 1.5, // 유리 굴절률
-            thickness: 0.5, // 굴절을 체감하게 하는 보석 두께감
-            clearcoat: 1.0, // 표면 니스 코팅 (영롱한 반짝임)
-            clearcoatRoughness: 0.1,
-            emissive: '#111111', // 아주 희미한 자체 발광으로 어두운 곳에서도 예쁘게 시인성 확보
-            emissiveIntensity: 0.5
+        return new THREE.MeshStandardMaterial({
+            color: '#ffffff', // instance color에 의해 개별 착색
+            emissive: '#ffeab8',
+            emissiveIntensity: 0.3,
+            roughness: 0.2,
+            metalness: 0.3, // 약간의 금속감으로 반짝임
+            transparent: false,
         })
     }, [])
 

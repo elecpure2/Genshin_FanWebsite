@@ -69,13 +69,13 @@ export function LobbyCamera({ activeCard }: { activeCard?: string | null }) {
     const targetLookAt = new THREE.Vector3()
 
     if (activeCard === 'furina') {
-      // 카드 위치([-5, 0.5, -12])의 정면으로 카메라 줌인
-      targetPos.set(-5, 0.5, -7.5)
-      targetLookAt.set(-5, 0.5, -12)
+      // 카드([-5, 0.5, -12]) + 텍스트([2, 0.5, -15])의 중간점으로 카메라 이동
+      targetPos.set(-1.5, 0.5, -6)
+      targetLookAt.set(-1.5, 0.5, -13.5)
     } else if (activeCard === 'nahida') {
-      // 카드 위치([6, 2, -15])의 정면으로 카메라 줌인
-      targetPos.set(6, 2, -10.5)
-      targetLookAt.set(6, 2, -15)
+      // 카드([6, 2, -15]) + 텍스트([13, 2, -18])의 중간점으로 카메라 이동
+      targetPos.set(9.5, 2, -9)
+      targetLookAt.set(9.5, 2, -16.5)
     } else {
       // 목표 카메라 위치 계산 (거울들을 따라 좌우/앞뒤로 이동하는 패닝)
       const t = targetOffset.current * 4 - 6
