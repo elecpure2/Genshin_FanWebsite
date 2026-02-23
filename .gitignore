@@ -40,14 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# editor
+# editor / AI
 .cursor/
-
-# Image assets (private)
-ImageReference/
-
-# BGM — miHoYo copyrighted music, do not commit
-*.mp3
+.gemini/
 
 # dev/backup files (not needed for deployment)
 .backup/
@@ -57,4 +52,6 @@ run-local.bat
 /styles/
 /tools/
 /assets/
-.gemini/
+
+# ImageReference: 레퍼런스 전용 이미지만 제외 (1~10.jpg)
+ImageReference/*.jpg
