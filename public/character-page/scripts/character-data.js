@@ -308,6 +308,7 @@ export const characters = {
         speed: 1.28,
       },
     ],
+    signatureQuote: "온 세상은 무대이고, 나는 그 주인공이야.",
     gallery: [
       "/ImageReference/Furina/Png/Upperbody.png",
       "/ImageReference/Furina/elecpure_Furina_from_Genshin_Impact_close-up_anime_portrait_sof_1c813a4e-3a9e-4f7e-b726-4e1ce2d718a8.png",
@@ -607,6 +608,7 @@ export const characters = {
         speed: 0.92,
       },
     ],
+    signatureQuote: "세상의 모든 지식은, 결국 누군가를 이해하기 위한 거라고 생각해.",
     gallery: [
       "/ImageReference/Nahida/Png/UpperShot.png",
       "/ImageReference/Nahida/Png/elecpure_Nahida_from_Genshin_Impact_close-up_anime_portrait_sof_68f4ced4-2048-4d68-a353-882f52153551.png",

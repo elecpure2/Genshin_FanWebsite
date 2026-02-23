@@ -555,6 +555,63 @@ section[id] {
   padding-bottom: 0;
 }
 
+/* ── Voice Lines 섹션 ──────────────────────────────── */
+.voice-lines {
+  margin-bottom: 32px;
+  padding-top: clamp(40px, 6vh, 80px);
+}
+
+.voice-lines-kicker {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.voice-lines-heading {
+  margin: 0 0 20px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  color: var(--primary-strong);
+  transition: color var(--dur-main) var(--ease-standard);
+}
+
+.voice-lines-grid {
+  position: relative;
+}
+
+.voice-quote {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+  line-height: 1.6;
+  color: var(--primary);
+  opacity: 0.36;
+  max-width: 48ch;
+  transition: color var(--dur-main) var(--ease-standard);
+}
+
+.profile-card .stat-list {
+  list-style: none;
+  border-radius: var(--radius-md);
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .voice-lines-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── ASCII ART 토글 버튼 ───────────────────────────── */
 .ascii-toggle-wrap {
   grid-column: 1 / -1;

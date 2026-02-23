@@ -4,11 +4,8 @@ import { TerminalAsciiExperience } from "./terminal-ascii-experience.js";
 
 const root = document.documentElement;
 
-const heroImage = document.getElementById("heroImage");
-const heroElement = document.getElementById("heroElement");
-const heroName = document.getElementById("heroName");
-const heroTitle = document.getElementById("heroTitle");
-const heroDescription = document.getElementById("heroDescription");
+const voiceLinesHeading = document.getElementById("voiceLinesHeading");
+const voiceLinesGrid = document.getElementById("voiceLinesGrid");
 const heroStats = document.getElementById("heroStats");
 
 const profileHeading = document.getElementById("profileHeading");
@@ -95,7 +92,6 @@ const particlePointer = { x: 0, y: 0, active: false };
 let decorMotionNodes = [];
 let keywordMotionNodes = [];
 let fxMotionNodes = [];
-let heroSwapToken = 0;
 let immersiveSwapToken = 0;
 const swipeState = {
   startX: 0,
@@ -1007,6 +1003,21 @@ function initSectionMoodTransition() {
   observer.observe(pageShell);
 }
 
+function renderVoiceLines(character) {
+  if (!voiceLinesGrid) return;
+  voiceLinesGrid.innerHTML = "";
+  if (voiceLinesHeading) {
+    voiceLinesHeading.textContent = character.displayName;
+  }
+  const quote = character.signatureQuote;
+  if (quote) {
+    const el = document.createElement("p");
+    el.className = "voice-quote";
+    el.textContent = `\u201C${quote}\u201D`;
+    voiceLinesGrid.append(el);
+  }
+}
+
 function renderStats(stats) {
   heroStats.innerHTML = "";
   stats.forEach(([label, value]) => {
@@ -1468,67 +1479,10 @@ function startParticles() {
 }
 
 function renderCharacter(character, options = {}) {
-  const direction = options.direction ?? 0;
-  const shouldAnimate = options.animate ?? true;
-  const sceneBlend = options.sceneBlend ?? false;
-  const swapToken = ++heroSwapToken;
-  const travelX = getDirectionalOffset(direction, sceneBlend ? 22 : 30);
-  const hasExistingHero = Boolean(heroImage.getAttribute("src"));
-  const useMotion = hasExistingHero && shouldAnimate && !prefersReducedMotion;
-  const outDuration = sceneBlend ? 200 : 210;
-  const swapDelay = sceneBlend ? 24 : 200;
-  const inDuration = sceneBlend ? 360 : 420;
-
-  if (useMotion) {
-    heroImage.getAnimations().forEach((animation) => animation.cancel());
-    heroImage.animate(
-      [
-        { opacity: 1, transform: "translate3d(0, 0, 0) scale(1)" },
-        {
-          opacity: 0.08,
-          transform: `translate3d(${travelX}px, 0, 0) scale(0.98)`,
-        },
-      ],
-      {
-        duration: outDuration,
-        easing: sceneBlend ? "cubic-bezier(0.32, 0.02, 0.21, 1)" : "cubic-bezier(0.45, 0, 0.2, 1)",
-        fill: "forwards",
-      }
-    );
-  }
-
-  window.setTimeout(() => {
-    if (swapToken !== heroSwapToken) {
-      return;
-    }
-    heroImage.src = character.heroImage;
-    heroImage.alt = `${character.displayName} hero image`;
-    if (useMotion) {
-      heroImage.getAnimations().forEach((animation) => animation.cancel());
-      heroImage.animate(
-        [
-          {
-            opacity: 0,
-            transform: `translate3d(${-travelX * 0.68}px, 0, 0) scale(1.02)`,
-          },
-          { opacity: 1, transform: "translate3d(0, 0, 0) scale(1)" },
-        ],
-        {
-          duration: inDuration,
-          easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
-          fill: "forwards",
-        }
-      );
-    }
-  }, useMotion ? swapDelay : 0);
-
-  heroElement.textContent = character.element;
-  heroName.textContent = character.displayName;
-  heroTitle.textContent = character.title;
-  heroDescription.textContent = character.description;
   profileHeading.textContent = `${character.displayName} Profile`;
   profileText.textContent = character.profileText;
 
+  renderVoiceLines(character);
   renderStats(character.stats);
   renderPills(character.pills);
   renderSnapshot(character);
