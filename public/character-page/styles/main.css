@@ -321,7 +321,8 @@ section[id] {
 
 .character-menu-panel {
   position: absolute;
-  top: calc(100% + 10px);
+  top: 100%;
+  padding-top: 10px;
   right: 0;
   width: min(360px, 72vw);
   max-height: min(70vh, 430px);
