@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Image assets (private)
 ImageReference/
+
+# BGM — miHoYo copyrighted music, do not commit
+*.mp3
