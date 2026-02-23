@@ -48,3 +48,13 @@ ImageReference/
 
 # BGM — miHoYo copyrighted music, do not commit
 *.mp3
+
+# dev/backup files (not needed for deployment)
+.backup/
+/index.html
+run-local.bat
+/scripts/
+/styles/
+/tools/
+/assets/
+.gemini/
